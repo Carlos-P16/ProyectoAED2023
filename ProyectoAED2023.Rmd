@@ -1,0 +1,43 @@
+---
+title: "ProyectoAED2023"
+author: "Carlos, Diego, Miguel"
+date: "2023-11-02"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Carga de datos
+
+```{r}
+library(readr)
+library(lubridate)
+```
+
+```{r}
+column_types <- cols(
+  Fecha = col_date(format = "%Y-%m-%d"),
+  `Dia de la semana` = col_factor(levels = c("Lunes", "Martes", "Miercoles", "Jueves", "Viernes", "Sabado", "Domingo")),
+  Estacion = col_factor())
+
+datos <- read_delim("data/rvvcca.csv", delim = ";", escape_double = FALSE, trim_ws = TRUE, col_types = column_types)
+
+columnas_eliminadas <- c("Fecha creacion","Fecha baja")
+datos <- datos[,!names(datos) %in% columnas_eliminadas]
+```
+
+# Separar dataframe principal en una lista de dataframes por estaciones
+```{r}
+estaciones <- unique(datos$Estacion)
+datos_separados <- list()
+
+for(s in estaciones){
+  datos_estacion <- datos[datos$Estacion == s,]
+  datos_separados <- append(datos_separados,list(datos_estacion))
+}
+
+names(datos_separados) <- estaciones
+```
+
