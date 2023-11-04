@@ -11,7 +11,45 @@ knitr::opts_chunk$set(echo = TRUE)
 
 # Introducción
 
-En el presente informe planteamos el análisis exploratorio de un conjunto de datos sobre la calidad del aire de la ciudad de Valencia entre 2004 y 2022. El dataset empleado continene observaciones obtenidas de distintas estaciones compuestas por variables respectivas a diversas moleculas y elementos presentes en el aire junto a otras de tipo meteorológico como la velocidad del viento, la temperatura, etc.
+En el presente informe planteamos el análisis exploratorio de un conjunto de datos sobre la calidad del aire de la ciudad de Valencia entre 2004 y 2022. El dataset empleado continene observaciones obtenidas de distintas estaciones de la red de vigilancia de Valencia. Las observaciones están compuestas por variables respectivas a diversas moleculas y elementos presentes en el aire junto a otras de tipo meteorológico como la velocidad del viento, la temperatura, etc.
+
+El procedimiento seguir comenzará con la correcta importación del dataset, a lo que seguirá la preparación de los datos para resolver las preguntas planteadas. Se escogerán las variables de interés y los periodos temporales sobre los que se realizará el análisis, se aplicarán las transformaciones necesarias sobre las variables, se reestructurará el dataset acorde a nuestras necesidades y se gestionarán los outliers y datos faltantes.
+
+Una vez preparado el dataset, procederemos a responder a las preguntas planteadas mediante diversas metodologías. Todo el proceso irá acompañado de las explicaciones pertinentes y finalizaremos con una conclusión del trabajo realizado.
+
+
+
+# Objetivos
+
+El objetivo principal de este trabajo es familizarse con las herramientas y metodologías aprendidas para la carga, manipulación y análisis exploratorio de un conjunto de datos. Para ello se van a plantear una serie de objetivos es forma de preguntas que requerirán la aplicación de las herramientas y metodologías aprendidas:
+
++ ¿?Influencia del cambio en el tráfico hacia el centro de la ciudad en los últimos años. (carriles bici) : Comprobar posible reducción de gases emitidos por vehículos a motor en las estaciones más céntricas.
+
++ ¿?Relación radiación solar con ozono
+
++ ¿?Existe cierta evolución de la contaminación sonora (años/zonas)
+
++ ¿?Existe cierta evolución de la temperatura
+
++ ¿?Existe cierta evolución de la contaminación. Como medir la contaminación
+
++ ¿?Existe alguna diferencia entre las distintas estaciones
+
++ ¿?Existe alguna correlación entre la calidad del aire y el día de la semana/año
+
++ ...
+
+A lo largo del desarrollo del proyecto se irán planteando y resolviendo las preguntas anteriores junto a su razonamiento y conclusiones.
+
+
+
+# Datos
+
+[Explicar la estructura del dataset sin modificar]
+
+[Escoger variables para "calidad del aire"]
+
+
 
 # Carga de datos
 
@@ -45,3 +83,6 @@ for(s in estaciones){
 names(datos_separados) <- estaciones
 ```
 
+# Exploración inicial de los datos
+
+summary de las variables, ver proporcion de datos faltantes, ver periodos temporales de recogida de las variables, etc. con el objetivo de escoger las variables necesarias para nuestros objetivos
