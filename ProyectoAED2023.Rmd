@@ -43,7 +43,7 @@ A lo largo del desarrollo del proyecto se irán planteando y resolviendo las pre
 
 
 
-# Datos
+# Carga de librerías y datos
 
 [Explicar la estructura del dataset sin modificar]
 
@@ -51,12 +51,14 @@ A lo largo del desarrollo del proyecto se irán planteando y resolviendo las pre
 
 
 
-# Carga de datos
-
 ```{r}
-library(readr)
-library(lubridate)
+library(readr) # Carga de datos
+library(lubridate) # Manejo de datos
+library(tidyr) # Manejo de datos
+library(dplyr) # Manejo de datos
+library(ggplot2) # Visualización de datos
 ```
+
 
 ```{r}
 column_types <- cols(
@@ -86,3 +88,5 @@ names(datos_separados) <- estaciones
 # Exploración inicial de los datos
 
 summary de las variables, ver proporcion de datos faltantes, ver periodos temporales de recogida de las variables, etc. con el objetivo de escoger las variables necesarias para nuestros objetivos
+
+
