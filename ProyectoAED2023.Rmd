@@ -9,6 +9,10 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+# Introducción
+
+En el presente informe planteamos el análisis exploratorio de un conjunto de datos sobre la calidad del aire de la ciudad de Valencia entre 2004 y 2022. El dataset empleado continene observaciones obtenidas de distintas estaciones compuestas por variables respectivas a diversas moleculas y elementos presentes en el aire junto a otras de tipo meteorológico como la velocidad del viento, la temperatura, etc.
+
 # Carga de datos
 
 ```{r}

@@ -3,6 +3,8 @@ Trabajo de la asignatura Análisis exploratorio de datos
 
 ## DATASET: DATOS DIARIOS CALIDAD DEL AIRE 2004-2022
 
+https://valencia.opendatasoft.com/explore/dataset/rvvcca/table/
+
 ### Limpieza de datos: 
   - Escoger variables: argumentar
       NOTA: Gases efecto invernadero: H2O, O3, N2O, CH4, CO2. Ver que niveles de estos gases se consideran peligrosos.
