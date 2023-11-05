@@ -154,6 +154,14 @@ ggplot(data = segmentos, aes(y = variable, color = porc_na)) + geom_segment(aes(
 
 A partir de este gráfico podemos ver como algunas variables empiezan a ser medidas a partir de cierta fecha. En concreto, los datos de *As*, *Cd*, *NH3*, *Ni*, *Pb* y *Prceipitacióo* empiezan a tomarse sólo a partir de 2019. En el caso del *B(a)* solo tenemos una entrada por lo que debemos dejar de considerar esta variable. Otras variables como *Velocidad_maxima_del_viento*  o *PM1* empiezan a tener datos un poco más tarde que el resto pero antes del 2019. Todas las demás variables presentan almenos algún dato en 2004. Por otro lado, los datos de *As*, *Ni*, *Cd* y *Ob* terminan antes que el resto de variables, a principios del 2022. Además, en el dódigo de colores se muestra el porcentaje de datos faltantes de cada variable en el período que ba desde la fecha de la primera toma de datos de esta variable hasta la fecha de la última. Cabe destacar en este aspecto que las variables *As*, *Cd*, *NH3*, *Ni*, *Pb*, tienen un porcentaje muy elevado de NA's (alrededor del 90%) al igual que las variabñes *C8H10*, *C7H8* y *C6H6*, pero en un período de tiempo mucho más pequeño.
 
+También queremos ver qué estaciones meteorológicas han estado recogiendo datos a lo largo de los años
+```{r}
+estaciones_anos <- datos %>% mutate(ano = factor(year(Fecha))) %>% select(c('ano','Estacion'))
+ggplot(data = estaciones_anos, aes(x=ano, fill = Estacion)) + geom_bar() + labs(x = 'Año') + theme(axis.text.x=element_text(angle=45, hjust=1))
+```
+
+Como podemos ver, desde 2004 hasta 2007 sólo tenemos datos de las estaciones de Pista de Silla y Viveros y posteriormente en los siguientes 5 años se van añadiendo datos de otras estaciones como la del Politécnico, Av. de Francia, Molí del Sol, Boulevard Sur, Valencia Centro y Conselleria a razón casi de una nueva estación al año. Desde 2013 hasta 2016 se mantienen las mismas estaciones y en los siguientes dos años se añaden datos de la estación del Puerto de Valencia, de la que posteriormente dejamos de obtener datos. Finalmente desde 2019 hasta 2022 se van añadiendo progresivamente cada año las estaciones de Nazaret, Puerto Molí Trans. Ponent, Puerto antic Turia y Valencia Olivereta. 2022 es el año donde tenemos datos de más estaciones distintas.
+
 # Influencia de carril bici
 
 Para estudiar la influencia de un carril bici por el centro de Valencia, estudiaremos la evolución de gases contaminantes en diversas estaciones de la ciudad. Mediremos la evolución de los gases:
