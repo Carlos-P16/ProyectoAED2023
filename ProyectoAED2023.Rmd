@@ -63,13 +63,17 @@ library(ggplot2) # Visualización de datos
 ```{r}
 column_types <- cols(
   Fecha = col_date(format = "%Y-%m-%d"),
-  `Dia de la semana` = col_factor(levels = c("Lunes", "Martes", "Miercoles", "Jueves", "Viernes", "Sabado", "Domingo")),
+  `Dia de la semana` = col_factor(levels = c("Lunes", "Martes",  "Miercoles", "Jueves", "Viernes", "Sabado", "Domingo")), `Dia del mes` = col_factor(levels = as.character(1:31)),
   Estacion = col_factor())
 
 datos <- read_delim("data/rvvcca.csv", delim = ";", escape_double = FALSE, trim_ws = TRUE, col_types = column_types)
 
 columnas_eliminadas <- c("Fecha creacion","Fecha baja")
 datos <- datos[,!names(datos) %in% columnas_eliminadas]
+
+# renombramos las varianles con espacios en su nombre para trabajar sin comillas ' ' y cambiamos el superíndice de ³ (ng/m³) por un 3 normal
+colnames(datos) <- gsub(x = colnames(datos), pattern=' ', replacement = '_')
+colnames(datos) <- gsub(x = colnames(datos), pattern='³', replacement = '3')
 ```
 
 # Separar dataframe principal en una lista de dataframes por estaciones
@@ -89,4 +93,57 @@ names(datos_separados) <- estaciones
 
 summary de las variables, ver proporcion de datos faltantes, ver periodos temporales de recogida de las variables, etc. con el objetivo de escoger las variables necesarias para nuestros objetivos
 
+Para tener una primera visión de nuestros datos usamos las funciones *glimpse* y *summary*, que nos proporcionan información básica sobre nuestro data.frame. Por una parte *glimpse*, proporciona el número de variables y observaciones, así como la clase de las distintas variables y una pequeña muestra de valores de cada variable. Por otro lado *summary* nos proporciona información estadística de cada variable en función de su clase (numérico, factor...), así como su número de datos faltantes (NA's).
 
+```{r}
+glimpse(datos)
+summary(datos)
+```
+
+Combinando estas funciones vemos que:
+
+- *Id* es un identificador que puede haber sido usado a la hora de combinar datos en este dataset. Su información estadistica por tanto no tiene ningín valor.
+
+- *Fecha* es una variable tipo *date* que nos proporciona la fecha en que se tomaron las medidas de las distintas variables.
+
+- *Dia_de_la_semana* y *Dia_del_mes* son variables de tipo factor que indican en que día de la semana y en qué dia del mes se realiza la medida. Puede ser extraído a partir de *Fecha*.
+
+- *Estacion* es una variable de tipo factor cuyos niveles son las distintas estaciones meteorológicas donde se tomaron las mediciones de las variables numéricas.
+
+- *PM1, PM2.5, PM10* son variables de tipo numérico con datos sobre la concentración de materiañes particuldos (OM) de menoss de 1, 2.5 y 10 micrómetros de diámetro respectivamente. Las tres variables presentan un número elevado de NA's.
+
+- *NO, NO2, NOx, O2, SO2, CO, NH3* son variables con datos sobre la concentración de estas moléculas inorgánicas consideradas contaminantes en el aire. *NO, NO2* y *NOx* presentan un número similar de NA's lo que puede ser indicativo de que estos datos han sido tomados a la vez. El resto de variables presenta un número mayor de NA's.
+
+- *C7H8, C6H6, C8H10* son variables con datos sobre la concentración de estas moléculas orgánicas consideradas contaminantes en el aire. También presentan un número similar de NA's por lo que estos datos pueden a¡haber sido tomados a la vez.
+
+- *Velocidad_del_viento, Direccion_del_viento, Temperatura, Humidad_relativa, Presion, Radiacion_solar, Precipitacion, Velocidad_maxima_del_viento* son variables numéricas con mediciones de estas distintas condiciones meteorológicas al momento de medir las concentraciones de moléculas contaminantes en el aire. Es interesante contar con estos datos para ver si influyen en los valores de contaminación. la velocidad y la dirección del viento tienen un número similar de NA's al igual que la temperatura, la humedad relativa, la presión y la radiación solar y las precipitaciones y la velocidad máxima del viento. En todos ls casos tenemos un número elevado de NA's.
+
+- *As_(ng/m3), Ni_(ng/m3), Cd_(ng/m3), Pb_(ng/m3), B(a)p_(ng/m3)* son variables numéricas con datos de otras concentraciones de gases y metales contaminantes en el aire. Todos tienen el mismo número NA's por lo que de nuevo parecen haber sido medidos al mismo tiempo.
+
+La conclusión de este primer análisis de los datos es que este dataset parece haber sido construido a partir de la unión de otros datasets, lo cuál explica que hayan tantos datos faltantes, ya que los datos de distintos datasets se tomaron en periódos de tiempo distintos, y al unirlos por la fecha queda una gran cantidad de NA's.
+
+Para comprobarlo, en primer lugar calculamos el porcentaje de NA's de cada una de las variabes de nuestro dataset:
+```{r}
+# Porcentaje de datos faltantes en cada variable
+sapply(lapply(datos, is.na), sum)*100/nrow(datos)
+```
+
+A continuación queremos visualizar el período de tiempo entre la primera y la última medida de cada variable
+```{r}
+# Consreuimos el cata.frame 'segmentos' que contiene la primera y la última fecha con datos de cada una de nuestras vaeiables numéricas
+segmentos <- data.frame(variable = colnames(datos)[6:length(colnames(datos))])
+for (i in 1:nrow(segmentos)) {
+  fecha_inicio[i] <- datos$Fecha[!is.na(datos[,segmentos[i,1]])][1]
+  fecha_fin[i] <- datos$Fecha[!is.na(datos[,segmentos[i,1]])][length(datos$Fecha[!is.na(datos[,segmentos[i,1]])])]
+  filtro <- filter(datos, Fecha >= fecha_inicio[i], Fecha <= fecha_fin[i])
+  porc_na[i] <- sum(is.na(filtro[,segmentos[1,i]]))*100/nrow(filtro)
+}
+segmentos$fecha_inicio <- fecha_inicio
+segmentos$fecha_fin <- fecha_fin
+segmentos$porc_na <- porc_na[6:length(porc_na)]
+
+# Representamos los segmentos de tiempo entre los que hay datos para cada una de las variables
+ggplot(data = segmentos, aes(x = fecha_inicio, y = variable, color = variable,)) + geom_segment(aes(xend = fecha_fin, yend = variable), lwd = 1.2) + theme(legend.position = "none") + labs(title = 'Período de tiempo entre la primera y la última medida')
+```
+
+A paerir de este gráfico podemos ver como algunas variables empiezan a ser medidas a partir de cierta fecha. En concreto, los datos de *As*, *Cd*, *NH3*, *Ni*, *Pb* y *Prceipitacióo* empiezan a tomarse sólo a partir de 2019. En el caso del *B(a)* solo tenemos una entrada por lo que debemos dejar de considerar esta variable. Otras variables como *Velocidad_maxima_del_viento*  o *PM1* empiezan a tener datos un poco más tarde que el resto pero antes del 2019. Todas las demás variables presentan almenos algún dato en 2004. Poe otro lado, los datos de *As*, *Ni*, *Cd* y *Ob* terminan antes que el resto de variables, a principios del 2022. 
