@@ -130,26 +130,29 @@ sapply(lapply(datos, is.na), sum)*100/nrow(datos)
 
 A continuación queremos visualizar el período de tiempo entre la primera y la última medida de cada variable
 ```{r}
-# Consreuimos el cata.frame 'segmentos' que contiene la primera y la última fecha con datos de cada una de nuestras vaeiables numéricas
+# Construimos el cata.frame 'segmentos' que contiene la primera y la última fecha con datos de cada una de nuestras variables numéricas
 segmentos <- data.frame(variable = colnames(datos)[6:length(colnames(datos))])
-fecha_inicio <- rep(0,nrow(segmentos))
-fecha_fin <- rep(0,nrow(segmentos))
+fecha_inicio <- as.Date(rep(0,nrow(segmentos)))
+fecha_fin <- as.Date(rep(0,nrow(segmentos)))
 porc_na <- rep(0,nrow(segmentos))
 for (i in 1:nrow(segmentos)) {
+  # fecha de la primera entrada con datos de la variable i
   fecha_inicio[i] <- datos$Fecha[!is.na(datos[,segmentos[i,1]])][1]
+  # fecha de la última entrada con datos de la variable i
   fecha_fin[i] <- datos$Fecha[!is.na(datos[,segmentos[i,1]])][length(datos$Fecha[!is.na(datos[,segmentos[i,1]])])]
   filtro <- filter(datos, Fecha >= fecha_inicio[i], Fecha <= fecha_fin[i])
-  porc_na[i] <- sum(is.na(filtro[,segmentos[1,i]]))*100/nrow(filtro)
+  # porcentaje de datos faltantes en la variable i desde la primera entrada con datos hasta la última
+  porc_na[i] <- sum(is.na(filtro[,segmentos[i,1]]))*100/nrow(filtro)
 }
 segmentos$fecha_inicio <- fecha_inicio
 segmentos$fecha_fin <- fecha_fin
-segmentos$porc_na <- porc_na #[6:length(porc_na)]
+segmentos$porc_na <- porc_na
 
 # Representamos los segmentos de tiempo entre los que hay datos para cada una de las variables
-ggplot(data = segmentos, aes(x = fecha_inicio, y = variable, color = variable,)) + geom_segment(aes(xend = fecha_fin, yend = variable), lwd = 1.2) + theme(legend.position = "none") + labs(title = 'Período de tiempo entre la primera y la última medida')
+ggplot(data = segmentos, aes(y = variable, color = porc_na)) + geom_segment(aes(x = fecha_inicio, xend = fecha_fin, yend = variable), lwd = 1.2) + geom_point(aes(x = fecha_inicio)) + geom_point(aes(x = fecha_fin)) + labs(title = 'Período de tiempo entre la primera y la última medida', x = 'Fecha') + scale_color_gradient("Porcentaje NA's", low = 'blue',high = 'red')
 ```
 
-A paerir de este gráfico podemos ver como algunas variables empiezan a ser medidas a partir de cierta fecha. En concreto, los datos de *As*, *Cd*, *NH3*, *Ni*, *Pb* y *Prceipitacióo* empiezan a tomarse sólo a partir de 2019. En el caso del *B(a)* solo tenemos una entrada por lo que debemos dejar de considerar esta variable. Otras variables como *Velocidad_maxima_del_viento*  o *PM1* empiezan a tener datos un poco más tarde que el resto pero antes del 2019. Todas las demás variables presentan almenos algún dato en 2004. Poe otro lado, los datos de *As*, *Ni*, *Cd* y *Ob* terminan antes que el resto de variables, a principios del 2022. 
+A partir de este gráfico podemos ver como algunas variables empiezan a ser medidas a partir de cierta fecha. En concreto, los datos de *As*, *Cd*, *NH3*, *Ni*, *Pb* y *Prceipitacióo* empiezan a tomarse sólo a partir de 2019. En el caso del *B(a)* solo tenemos una entrada por lo que debemos dejar de considerar esta variable. Otras variables como *Velocidad_maxima_del_viento*  o *PM1* empiezan a tener datos un poco más tarde que el resto pero antes del 2019. Todas las demás variables presentan almenos algún dato en 2004. Por otro lado, los datos de *As*, *Ni*, *Cd* y *Ob* terminan antes que el resto de variables, a principios del 2022. Además, en el dódigo de colores se muestra el porcentaje de datos faltantes de cada variable en el período que ba desde la fecha de la primera toma de datos de esta variable hasta la fecha de la última. Cabe destacar en este aspecto que las variables *As*, *Cd*, *NH3*, *Ni*, *Pb*, tienen un porcentaje muy elevado de NA's (alrededor del 90%) al igual que las variabñes *C8H10*, *C7H8* y *C6H6*, pero en un período de tiempo mucho más pequeño.
 
 # Influencia de carril bici
 
