@@ -142,6 +142,10 @@ Vemos que solo toma dos valores que no nos aportan ninguna información relevant
 datos <- datos[,!(colnames(datos) %in% c("Fecha creacion", "Fecha baja"))]
 ```
 
+También vamos a ordenar el dataset por Fecha en orden ascendente
+```{r}
+datos <- arrange(datos,datos$Fecha)
+```
 
 Como hemos visto que nuestro dataset contiene un número muy significante de NA's, vamos a calcular el porcentaje de NA's de cada una de las variabes de nuestro dataset:
 ```{r}
@@ -150,6 +154,22 @@ sapply(lapply(datos, is.na), sum)*100/nrow(datos)
 ```
 
 A continuación queremos visualizar el período de tiempo entre la primera y la última medida de cada variable
+
+```{r}
+# Alternativa: creamos una lista de dataframes, uno para cada variable, conteniendo las observaciones que no son NA
+# La primera observación es el inicio de la toma de muestras y la última el fin, ya que se ha ordenado por fecha previamente
+series_temporales <- list()
+variables <- colnames(datos)[4:length(colnames(datos))]
+
+for (i in 1:length(variables) ) {
+  df <- data.frame(fecha = datos$Fecha, valor = datos[[variables[i]]]) %>% na.omit
+  series_temporales[[i]] <- df
+}
+names(series_temporales) <- variables
+
+ggplot() + geom_line(data = series_temporales[[1]], aes(fecha,valor)) + ylab(variables[1])
+```
+
 ```{r}
 # Construimos el cata.frame 'segmentos' que contiene la primera y la última fecha con datos de cada una de nuestras variables numéricas
 segmentos <- data.frame(variable = colnames(datos)[6:length(colnames(datos))])
