@@ -67,14 +67,6 @@ column_types <- cols(
   Estacion = col_factor())
 
 datos <- read_delim("data/rvvcca.csv", delim = ";", escape_double = FALSE, trim_ws = TRUE, col_types = column_types)
-
-
-#columnas_eliminadas <- c("Fecha creacion","Fecha baja")
-#datos <- datos[,!names(datos) %in% columnas_eliminadas]
-
-# renombramos las varianles con espacios en su nombre para trabajar sin comillas ' ' y cambiamos el superíndice de ³ (ng/m³) por un 3 normal
-#colnames(datos) <- gsub(x = colnames(datos), pattern=' ', replacement = '_')
-#colnames(datos) <- gsub(x = colnames(datos), pattern='³', replacement = '3')
 ```
 
 # Separar dataframe principal en una lista de dataframes por estaciones
@@ -103,7 +95,7 @@ summary(datos)
 
 Combinando estas funciones vemos que:
 
-- *Id* es un identificador que puede haber sido usado a la hora de combinar datos en este dataset. Su información estadistica por tanto no tiene ningín valor.
+- *Id* es un identificador que puede haber sido usado a la hora de combinar datos en este dataset. Su información estadística por tanto no tiene ningín valor.
 
 - *Fecha* es una variable tipo *date* que nos proporciona la fecha en que se tomaron las medidas de las distintas variables. Tomaremos esta variable para la ordenación ascendente de los datos.
 
@@ -147,6 +139,13 @@ También vamos a ordenar el dataset por Fecha en orden ascendente
 datos <- arrange(datos,datos$Fecha)
 ```
 
+Para evitar posibles problemasrenombramos las varianles con espacios en su nombre para trabajar sin comillas ' ' y cambiamos el superíndice de ³ (ng/m³) por un 3 normal
+```{r}
+colnames(datos) <- gsub(x = colnames(datos), pattern=' ', replacement = '_')
+colnames(datos) <- gsub(x = colnames(datos), pattern='³', replacement = '3')
+```
+
+
 Como hemos visto que nuestro dataset contiene un número muy significante de NA's, vamos a calcular el porcentaje de NA's de cada una de las variabes de nuestro dataset:
 ```{r}
 # Porcentaje de datos faltantes en cada variable
@@ -166,15 +165,15 @@ for (i in 1:length(variables) ) {
   series_temporales[[i]] <- df
 }
 names(series_temporales) <- variables
-
-ggplot() + geom_line(data = series_temporales[[1]], aes(fecha,valor)) + ylab(variables[1])
 ```
 
 ```{r}
 # Construimos el cata.frame 'segmentos' que contiene la primera y la última fecha con datos de cada una de nuestras variables numéricas
-segmentos <- data.frame(variable = colnames(datos)[6:length(colnames(datos))])
-fecha_inicio <- as.Date(rep(0,nrow(segmentos)))
-fecha_fin <- as.Date(rep(0,nrow(segmentos)))
+segmentos <- data.frame(variable = colnames(datos)[4:length(colnames(datos))])
+#fecha_inicio <- rep(0,nrow(segmentos))
+#fecha_fin <- rep(0,nrow(segmentos))
+fecha_inicio <- vector(length = nrow(segmentos))
+fecha_fin <- vector(length = nrow(segmentos))
 porc_na <- rep(0,nrow(segmentos))
 for (i in 1:nrow(segmentos)) {
   # fecha de la primera entrada con datos de la variable i
@@ -194,6 +193,19 @@ ggplot(data = segmentos, aes(y = variable, color = porc_na)) + geom_segment(aes(
 ```
 
 A partir de este gráfico podemos ver como algunas variables empiezan a ser medidas a partir de cierta fecha. En concreto, los datos de *As*, *Cd*, *NH3*, *Ni*, *Pb* y *Prceipitacióo* empiezan a tomarse sólo a partir de 2019. En el caso del *B(a)* solo tenemos una entrada por lo que debemos dejar de considerar esta variable. Otras variables como *Velocidad_maxima_del_viento*  o *PM1* empiezan a tener datos un poco más tarde que el resto pero antes del 2019. Todas las demás variables presentan almenos algún dato en 2004. Por otro lado, los datos de *As*, *Ni*, *Cd* y *Ob* terminan antes que el resto de variables, a principios del 2022. Además, en el dódigo de colores se muestra el porcentaje de datos faltantes de cada variable en el período que ba desde la fecha de la primera toma de datos de esta variable hasta la fecha de la última. Cabe destacar en este aspecto que las variables *As*, *Cd*, *NH3*, *Ni*, *Pb*, tienen un porcentaje muy elevado de NA's (alrededor del 90%) al igual que las variabñes *C8H10*, *C7H8* y *C6H6*, pero en un período de tiempo mucho más pequeño.
+
+En conclusión, el conjunto de variables con las que podemos trabajar de forma simultánea respecto al tiempo son: PM2.5, PM10, NO, NO2, NOx, O3, SO2, CO, C7H8, C6H6, C8H10, Ruido, Velocidad del viento, Direccion del viento, Temperatura, Humedad_relativa, Presion y Radiación solar. Hay que tener en cuenta que la diferencia de NA's entre las variables puede indicar periodos intermedios donde no se han tomado datos, o que en algunas estaciones meteorológicas no se toman esos datos.
+
+```{r}
+aux <- pivot_longer(data = datos, cols = 4:ncol(datos), names_to = "Variable", values_to = "Valor") %>% na.omit
+aux$Variable <- as.factor(aux$Variable)
+ggplot(data = aux, aes(y=Variable, color=Variable)) + 
+    geom_point(aes(x=Fecha)) + 
+    facet_wrap(~Estacion, nrow=6) + 
+    theme(axis.title.y=element_blank(),
+        axis.text.y=element_blank(),
+        axis.ticks.y=element_blank())
+```
 
 También queremos ver qué estaciones meteorológicas han estado recogiendo datos a lo largo de los años
 ```{r}
@@ -242,5 +254,11 @@ ggplot(data = datos_mensuales, aes(x = mes, y = media_NO2, group = ano, color = 
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 ```
 
+NOTA: El gráfico de NO2 se ve mucho mejor la reducción cuando se observan todas las estaciones.
+
 Si bien no se observan cambios significativos en los niveles de SO2, en los niveles de NO2 sí que podemos observar una evolución.
+
+Respecto al NO2 si que se puede apreciar una reducción a lo largo de los años. Con unos niveles más bajos especialmente en los últimos 3 años. Además se puede apreciar una periodicidad, concretamente una reducción de los niveles de NO2 en los meses de verano. Esto coincide con el momento del año donde menos gente vive en la ciudad y por lo tanto menos tráfico hay. En conclusión parece que las medidas de transporte que se han tomado en la ciudad han influenciado en la reducción de gases contaminantes.
+
+
 
