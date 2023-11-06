@@ -68,12 +68,13 @@ column_types <- cols(
 
 datos <- read_delim("data/rvvcca.csv", delim = ";", escape_double = FALSE, trim_ws = TRUE, col_types = column_types)
 
-columnas_eliminadas <- c("Fecha creacion","Fecha baja")
-datos <- datos[,!names(datos) %in% columnas_eliminadas]
+
+#columnas_eliminadas <- c("Fecha creacion","Fecha baja")
+#datos <- datos[,!names(datos) %in% columnas_eliminadas]
 
 # renombramos las varianles con espacios en su nombre para trabajar sin comillas ' ' y cambiamos el superíndice de ³ (ng/m³) por un 3 normal
-colnames(datos) <- gsub(x = colnames(datos), pattern=' ', replacement = '_')
-colnames(datos) <- gsub(x = colnames(datos), pattern='³', replacement = '3')
+#colnames(datos) <- gsub(x = colnames(datos), pattern=' ', replacement = '_')
+#colnames(datos) <- gsub(x = colnames(datos), pattern='³', replacement = '3')
 ```
 
 # Separar dataframe principal en una lista de dataframes por estaciones
@@ -104,13 +105,13 @@ Combinando estas funciones vemos que:
 
 - *Id* es un identificador que puede haber sido usado a la hora de combinar datos en este dataset. Su información estadistica por tanto no tiene ningín valor.
 
-- *Fecha* es una variable tipo *date* que nos proporciona la fecha en que se tomaron las medidas de las distintas variables.
+- *Fecha* es una variable tipo *date* que nos proporciona la fecha en que se tomaron las medidas de las distintas variables. Tomaremos esta variable para la ordenación ascendente de los datos.
 
-- *Dia_de_la_semana* y *Dia_del_mes* son variables de tipo factor que indican en que día de la semana y en qué dia del mes se realiza la medida. Puede ser extraído a partir de *Fecha*.
+- *Dia_de_la_semana* y *Dia_del_mes* son variables de tipo factor que indican en que día de la semana y en qué dia del mes se realiza la medida. Puede ser extraído a partir de *Fecha*. Como podemos acceder a estos valores mediante la librería _lubridate_ y la variable *Fecha* podemos prescindir de ellas.
 
 - *Estacion* es una variable de tipo factor cuyos niveles son las distintas estaciones meteorológicas donde se tomaron las mediciones de las variables numéricas.
 
-- *PM1, PM2.5, PM10* son variables de tipo numérico con datos sobre la concentración de materiañes particuldos (OM) de menoss de 1, 2.5 y 10 micrómetros de diámetro respectivamente. Las tres variables presentan un número elevado de NA's.
+- *PM1, PM2.5, PM10* son variables de tipo numérico con datos sobre la concentración de materiales particuldos (OM) de menos de 1, 2.5 y 10 micrómetros de diámetro respectivamente. Las tres variables presentan un número elevado de NA's.
 
 - *NO, NO2, NOx, O2, SO2, CO, NH3* son variables con datos sobre la concentración de estas moléculas inorgánicas consideradas contaminantes en el aire. *NO, NO2* y *NOx* presentan un número similar de NA's lo que puede ser indicativo de que estos datos han sido tomados a la vez. El resto de variables presenta un número mayor de NA's.
 
@@ -120,9 +121,29 @@ Combinando estas funciones vemos que:
 
 - *As_(ng/m3), Ni_(ng/m3), Cd_(ng/m3), Pb_(ng/m3), B(a)p_(ng/m3)* son variables numéricas con datos de otras concentraciones de gases y metales contaminantes en el aire. Todos tienen el mismo número NA's por lo que de nuevo parecen haber sido medidos al mismo tiempo.
 
-La conclusión de este primer análisis de los datos es que este dataset parece haber sido construido a partir de la unión de otros datasets, lo cuál explica que hayan tantos datos faltantes, ya que los datos de distintos datasets se tomaron en periódos de tiempo distintos, y al unirlos por la fecha queda una gran cantidad de NA's.
+La conclusión de este primer análisis de los datos es que este dataset parece haber sido construido a partir de la unión de otros datasets, lo cuál explica que hayan tantos datos faltantes, ya que los datos de distintos datasets se tomaron en periódos de tiempo distintos, y al unirlos por la fecha queda una gran cantidad de NA's. Esto implica trabajar en distintos intervalos temporales para cada una de las preguntas que pretendamos responder.
 
-Para comprobarlo, en primer lugar calculamos el porcentaje de NA's de cada una de las variabes de nuestro dataset:
+Vamos a comenzar eliminando algunas variables. Como hemos mencionado previamente, no necesitamos las variables *Dia_de_la_semana* y *Dia_del_mes* debido a que podemos acceder a estos valores mediante _wday()_ y _day()_, de la librería _lubridate_, respectivamente. Es importante recalcar que para _lurbidate_ el día 1 de la semana es el Domingo.
+
+```{r}
+datos <- datos[,!(colnames(datos) %in% c("Dia del mes", "Dia de la semana"))]
+```
+
+Por otro lado, podemos intuir mediante el summary previo que la variable *Fecha creación* es peculiar. La analizamos individualmente.
+
+```{r}
+# Vemos los valores que toma y sus apariciones
+table(datos$`Fecha creacion`)
+```
+
+Vemos que solo toma dos valores que no nos aportan ninguna información relevante, por lo que la vamos a eliminar junto a la variable *Fecha baja* ya que esta solo toma valores NA.
+
+```{r}
+datos <- datos[,!(colnames(datos) %in% c("Fecha creacion", "Fecha baja"))]
+```
+
+
+Como hemos visto que nuestro dataset contiene un número muy significante de NA's, vamos a calcular el porcentaje de NA's de cada una de las variabes de nuestro dataset:
 ```{r}
 # Porcentaje de datos faltantes en cada variable
 sapply(lapply(datos, is.na), sum)*100/nrow(datos)
