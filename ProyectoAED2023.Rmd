@@ -303,6 +303,18 @@ datos_clean_outliers <- datos %>%
   mutate_at(vars(all_of(columnas_numericas)), ~ replace_outliers(., hampel))
 ```
 
+## Variables más y menos correlacionadas
+
+La correlación puede tener valores en el rango [-1,1]. Siendo -1 el indicador de un comportamiento absolutamente contrario y siendo 1 la misma variable, pues tiene exactamente el mismo comportamiento.
+
+A continuación, observaremos en orden descendente las correlaciones de variables superiores a 0'7. Además, también observaremos las correlaciones menores de 0'7 en orden descendente.
+
+Esto puede darnos información para reflexionar sobre la naturaleza y comportamiento de los datos.
+
+```{r}
+correlation_matrix <- cor(datos_clean_outliers[columnas_numericas])
+```
+
 
 # Influencia de carril bici
 
