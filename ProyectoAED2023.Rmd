@@ -203,6 +203,107 @@ ggplot(data = estaciones_anos, aes(x=ano, fill = Estacion)) + geom_bar() + labs(
 
 Como podemos ver, desde 2004 hasta 2007 sólo tenemos datos de las estaciones de Pista de Silla y Viveros y posteriormente en los siguientes 5 años se van añadiendo datos de otras estaciones como la del Politécnico, Av. de Francia, Molí del Sol, Boulevard Sur, Valencia Centro y Conselleria a razón casi de una nueva estación al año. Desde 2013 hasta 2016 se mantienen las mismas estaciones y en los siguientes dos años se añaden datos de la estación del Puerto de Valencia, de la que posteriormente dejamos de obtener datos. Finalmente desde 2019 hasta 2022 se van añadiendo progresivamente cada año las estaciones de Nazaret, Puerto Molí Trans. Ponent, Puerto antic Turia y Valencia Olivereta. 2022 es el año donde tenemos datos de más estaciones distintas.
 
+## Limpieza de datos
+
+En esta sección nos encargaremos de imputar los NA para no eliminar instancias en los datos y deshacernos de los outliers.
+
+```{r}
+tresSigma <- function(x){
+  media <- mean(x,na.rm=TRUE)
+  desviacion <- sd(x,na.rm=TRUE)
+  lim_low <- media - 3 * desviacion
+  lim_upp <- media + 3 * desviacion
+  
+  outliers <- x[x < lim_low | x > lim_upp]
+  
+  return(outliers)
+}
+
+hampel <- function(x){
+  mediana <- median(x, na.rm = TRUE)
+  madm <- mad(x, constant = 1.4826, na.rm = TRUE)
+  umbral <- 3 * madm
+  
+  outliers <- x[abs(x-mediana) > umbral]
+  
+  return(outliers)
+}
+
+boxplot <- function(x){
+  q1 <- quantile(x, 0.25, na.rm = TRUE)
+  q3 <- quantile(x, 0.75, na.rm = TRUE)
+  
+  iqr <- q3 - q1
+  
+  lower_limit <- q1 - 1.5 * iqr
+  upper_limit <- q3 + 1.5 * iqr
+  
+  outliers <- x[x < lower_limit | x > upper_limit]
+  
+  return(outliers)
+}
+
+percentil <- function(x){
+  p5 <- quantile(x, 0.05, na.rm = TRUE)
+  p95 <- quantile(x, 0.95, na.rm = TRUE)
+  
+  outliers <- x[x < p5 | x > p95]
+  
+  return(outliers)
+}
+
+remove_outliers <- function(x, func) {
+  outliers <- func(x)
+  return(x[!is.na(outliers)])
+}
+
+replace_outliers <- function(x, func) {
+  outliers <- func(x)
+  x[outliers] <- NA
+  return(x)
+}
+```
+
+Vamos a comprobar el funcionamiento de los métodos de detección de outliers. Lo aplicaremos sobre todas las variables numéricas referentes a 
+```{r}
+columnas_numericas <- setdiff(names(datos)[sapply(datos, is.numeric)], c("Id", "Dirección del viento"))
+
+m1 <- apply(datos[columnas_numericas], 2, tresSigma)
+m2 <- apply(datos[columnas_numericas], 2, hampel)
+m3 <- apply(datos[columnas_numericas], 2, boxplot)
+m4 <- apply(datos[columnas_numericas], 2, percentil)
+
+m1 <- sapply(sapply(m1, complete.cases),sum)
+m2 <- sapply(sapply(m2, complete.cases),sum)
+m3 <- sapply(sapply(m3, complete.cases),sum)
+m4 <- sapply(sapply(m4, complete.cases),sum)
+
+resultados <- data.frame(
+  Metodo = rep(c("3-Sigma", "Hampel", "Boxplot", "Percentil"), each = length(columnas_numericas)),
+  Columna = rep(columnas_numericas, times = 4),
+  Outliers_Detectados = c(m1, m2, m3, m4)
+)
+
+ggplot(resultados, aes(x = Columna, y = Outliers_Detectados, fill = Metodo)) +
+  geom_bar(stat = "identity", position = position_dodge()) +
+  labs(title = "Número de Outliers Detectados por Método",
+       x = "Columna Numérica",
+       y = "Número de Outliers Detectados") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+
+Usaremos el metodo de Hampel, ya que por la naturaleza de los datos no podemos suponer los datos como una distribución Gaussiana.
+
+A continuación, reemplazaremos los outliers por NA.
+
+```{r}
+datos_clean_outliers <- datos %>%
+  mutate_at(vars(all_of(columnas_numericas)), ~ replace_outliers(., hampel))
+```
+
+
 # Influencia de carril bici
 
 Para estudiar la influencia de un carril bici por el centro de Valencia, estudiaremos la evolución de gases contaminantes en diversas estaciones de la ciudad. Mediremos la evolución de los gases:
