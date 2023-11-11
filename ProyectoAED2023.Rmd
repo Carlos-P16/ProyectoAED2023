@@ -212,17 +212,30 @@ A partir de este gráfico podemos ver como algunas variables empiezan a ser medi
 
 Tras esta primera visualización de nuestros datos, podemos concluir que la gran cantidad de datos faltantes se debe a una combinación del hecho de que no todas las estaciones miden todas las variables, sumado a que los datos de ciertas variables se empiezan a medir posteriormente que el resto. Esto puede deberse a que la(s) estación(es) que recoge(n) datos de esta variable comienza(n) a funcionar en una fecha posterior al resto de estaciones o simplemente debido a que hasta cierto año no se instalan sensores en las estaciones para medir esas variables. En cualquier caso, dependiendo del análisis que se quiera realizar se habrán de escoger unas variables, y por ende un determinado número de estaciones que midan estas variables y un período de tiempo en que se estén recogiendo datos de estas variables.
 
-En nuestro caso vamos a escoger un período de 10 años, desde 2012 a 2011, ya que en este período de tiempo hay un número significativo de estaciones recogiendo datos y la mayoría de las variables son medidas en este intervalo de tiempo de forma consistente. No obstante, decidimos descartar las variables *Pb*, *Cd*, *Ni*, *As*, *B(a)p* y *NH3* debido a que se comienzan a medir después del 2012 y resultaría poco razonable imputar los datos de estas variables en esos años. De la misma forma, también descartamos las variables *C7H8*, *C6H6*, y *C8H10* debido a que presentan grandes períodos de tiempo con ausencia de datos intercalados entre 2012 y 2022, por lo que también sería poco razonable imputar estos datos. Centrándonos en el resto de variables, si bien son más consistentes en lo que se refiere a las entradas diarias de cada variable, todavía hay muchos datos faltantes. No obstante, podemos aprovechar el hecho de que los datos diarios de las variables en todas las estaciones de Valencia suelen ser muy parecidos, por lo que decidimos imputar los datos faltantes en cada día con la media de esta variable sobre todas las estaciones. Tras realizar esta imputación, todavía hay algunas variables que presentan NA's, esto se debe a que hay algunos días donde donde esta variable no se ha medido en ninguna de las estaciones. Esto sólo ocurre en el 11% de las observaciones, por lo que decidimos desprendernos de estas observaciones, ya que el volúmen de datos es suficientemente grande y los datos todavía pueden considerarse diarios,
+En nuestro caso vamos a escoger un período de 10 años, desde 2012 a 2022, ya que en este período de tiempo hay un número significativo de estaciones recogiendo datos y la mayoría de las variables son medidas en este intervalo de tiempo de forma consistente. No obstante, decidimos descartar las variables *Pb*, *Cd*, *Ni*, *As*, *B(a)p* y *NH3* debido a que se comienzan a medir después del 2012 y resultaría poco razonable imputar los datos de estas variables en esos años. De la misma forma, también descartamos las variables *C7H8*, *C6H6*, y *C8H10* debido a que presentan grandes períodos de tiempo con ausencia de datos intercalados entre 2012 y 2022, por lo que también sería poco razonable imputar estos datos. 
+
+Centrándonos en el resto de variables, si bien son más consistentes en lo que se refiere a las entradas diarias de cada variable, todavía hay muchos datos faltantes. No obstante, podemos aprovechar el hecho de que los datos diarios de las variables en todas las estaciones de Valencia suelen ser muy parecidos, por lo que decidimos imputar los datos faltantes en cada día con la media de esta variable sobre todas las estaciones. Tras realizar esta imputación, todavía hay algunas variables que presentan NA's, esto se debe a que hay algunos días donde donde esta variable no se ha medido en ninguna de las estaciones. Esto sólo ocurre en el 11% de las observaciones, por lo que decidimos desprendernos de estas observaciones, ya que el volúmen de datos es suficientemente grande y los datos todavía pueden considerarse diarios,
 
 ```{r}
 imputacion_NAs <- function(x){
   ifelse(is.na(x), mean(x, na.rm = T), x)
 }
+
 col_imputadas <- c("PM1","PM2.5","PM10","NO","NO2","NOx","O3","SO2","CO","Ruido","Velocidad_del_viento","Direccion_del_viento","Temperatura","Humidad_relativa","Presion","Radiacion_solar","Precipitacion","Velocidad_maxima_del_viento")
-datos_limpios <- datos %>% filter(Fecha >= as.Date('2012-01-01', format = '%Y-%m-%d'), Fecha <= as.Date('2022-01-01', format = '%Y-%m-%d')) %>% select(-c('Pb','Cd','Ni','As','B(a)p','NH3','C7H8','C6H6','C8H10')) %>% group_by(Fecha) %>% mutate(across(.cols = all_of(col_imputadas), imputacion_NAs)) %>% mutate(across(all_of(col_imputadas), reemplazo_especiales))
+
+datos_limpios <- datos %>% 
+  filter(Fecha >= as.Date('2012-01-01', format = '%Y-%m-%d'), Fecha <= as.Date('2022-01-01', format = '%Y-%m-%d')) %>%
+  select(-c('Pb_(ng/m3)','Cd_(ng/m3)','Ni_(ng/m3)','As_(ng/m3)','B(a)p_(ng/m3)','NH3','C7H8','C6H6','C8H10')) %>% 
+  group_by(Fecha) %>% 
+  mutate(across(.cols = all_of(col_imputadas), imputacion_NAs)) %>% 
+  mutate(across(all_of(col_imputadas), reemplazo_especiales)) %>%
+  ungroup
+
 100*sum(complete.cases(datos_limpios))/nrow(datos_limpios)
+
 datos_limpios <- datos_limpios[complete.cases(datos_limpios),]
 ```
+
 
 # Análisis univariante
 
@@ -237,6 +250,13 @@ Comenzamos con un summary para analizar las magnitudes de las variables y como s
 ```{r}
 variables <- c("Fecha", "Estacion","NO", "NO2", "NOx", "SO2", "CO", "O3", "Temperatura", "Velocidad_del_viento", "Direccion_del_viento", "Humidad_relativa", "Presion", "Radiacion_solar", "Precipitacion")
 datos %>%
+  select(all_of(variables[-c(1:2)])) %>%
+  summary
+```
+
+```{r}
+variables <- c("Fecha", "Estacion","NO", "NO2", "NOx", "SO2", "CO", "O3", "Temperatura", "Velocidad_del_viento", "Direccion_del_viento", "Humidad_relativa", "Presion", "Radiacion_solar", "Precipitacion")
+datos_limpios %>%
   select(all_of(variables[-c(1:2)])) %>%
   summary
 ```
@@ -279,17 +299,25 @@ datos %>%
   theme(axis.text.x = element_blank(), legend.position = "none")
 ```
 
-Podemos concluir con que generalmente la estación no influye en los valores de las variables.
+Podemos concluir con que generalmente la estación no influye en los valores de las variables. [...]
 
 
 # Analisis bivariante
 
-```{r}
+```{r, eval=FALSE}
 library(GGally)
-datos %>%
+corr1 <- datos %>%
   select(all_of(variables[3:15])) %>%
   na.omit %>%
   cor
+
+corr2 <- datos_limpios %>%
+  select(all_of(variables[3:15])) %>%
+  na.omit %>%
+  cor
+
+diff <- abs(corr1-corr2)
+diff
 
 ggcorr(datos %>%
   select(all_of(variables[3:15])))
@@ -298,6 +326,7 @@ ggpairs(datos %>%
   select(all_of(variables[3:15])))
 ```
 NOTA: correlación negativa NOs con Ozono (Cuando mas NOS menos Ozono...)
+
 
 # Influencia de carril bici
 
