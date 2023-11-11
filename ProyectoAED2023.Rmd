@@ -120,7 +120,7 @@ Para evitar posibles problemas, renombramos las varianles con espacios en su nom
 
 ```{r}
 colnames(datos) <- gsub(x = colnames(datos), pattern=' ', replacement = '_')
-colnames(datos) <- gsub(x = colnames(datos), pattern='³', replacement = '3')
+colnames(datos) <- gsub(x = colnames(datos), pattern='_[(]ng[/]m³[)]$', replacement = '')
 ```
 
 Vamos a mantener sólo las variables que aporten alguna información relevante:
