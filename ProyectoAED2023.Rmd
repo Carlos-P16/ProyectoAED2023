@@ -58,23 +58,28 @@ library(tidyr) # Manejo de datos
 library(dplyr) # Manejo de datos
 library(ggplot2) # Visualización de datos
 ```
+# Importación de los datos y análisis de las variables
 
+El primer paso es importar nuestro dataset. Para ello, en primer lugar abrimos (por ejemplo en un bloc de notas) el archivo _rvvcca.csv_ localizado en la carpeta data. De esta forma vemos el formato en el que están guardados los datos, lo cuál es importante para su correcta importación. Por ejemplo, vemos que el separador de las variables es ';', lo cuál debe ser especificado en la función _read.csv()_ ya que esta toma por defecto espera ',' como separador.
 
 ```{r}
+# Especificamos el tipo de columna para que los datos se importen directamente con un formato adecuado
 column_types <- cols(
   Fecha = col_date(format = "%Y-%m-%d"),
-  `Dia de la semana` = col_factor(levels = c("Lunes", "Martes",  "Miercoles", "Jueves", "Viernes", "Sabado", "Domingo")), `Dia del mes` = col_factor(levels = as.character(1:31)),
-  Estacion = col_factor())
+  `Dia de la semana` = col_factor(levels = c("Lunes", "Martes",  "Miercoles", "Jueves", "Viernes", "Sabado", "Domingo")),
+  `Dia del mes` = col_factor(levels = as.character(1:31)),
+  Estacion = col_factor(),
+  `Fecha creacion`= col_date(format = "%Y-%m-%d"),
+  `Fecha baja`= col_date(format = "%Y-%m-%d"))
 
+# importación del dataset
 datos <- read_delim("data/rvvcca.csv", delim = ";", escape_double = FALSE, trim_ws = TRUE, col_types = column_types)
 
+# renombramos las varianles con espacios en su nombre para trabajar sin comillas ' ' y eliminamos el sufijo (ng/m³) de algunas variables
+colnames(datos) <- gsub(x = colnames(datos), pattern=' ', replacement = '_')
+colnames(datos) <- gsub(x = colnames(datos), pattern='_[(]ng[/]m³[)]$', replacement = '')
 
-#columnas_eliminadas <- c("Fecha creacion","Fecha baja")
-#datos <- datos[,!names(datos) %in% columnas_eliminadas]
-
-# renombramos las varianles con espacios en su nombre para trabajar sin comillas ' ' y cambiamos el superíndice de ³ (ng/m³) por un 3 normal
-#colnames(datos) <- gsub(x = colnames(datos), pattern=' ', replacement = '_')
-#colnames(datos) <- gsub(x = colnames(datos), pattern='³', replacement = '3')
+head(datos)
 ```
 
 # Separar dataframe principal en una lista de dataframes por estaciones
@@ -90,67 +95,79 @@ for(s in estaciones){
 names(datos_separados) <- estaciones
 ```
 
-# Exploración inicial de los datos
 
-summary de las variables, ver proporcion de datos faltantes, ver periodos temporales de recogida de las variables, etc. con el objetivo de escoger las variables necesarias para nuestros objetivos
 
-Para tener una primera visión de nuestros datos usamos las funciones *glimpse* y *summary*, que nos proporcionan información básica sobre nuestro data.frame. Por una parte *glimpse*, proporciona el número de variables y observaciones, así como la clase de las distintas variables y una pequeña muestra de valores de cada variable. Por otro lado *summary* nos proporciona información estadística de cada variable en función de su clase (numérico, factor...), así como su número de datos faltantes (NA's).
 
-```{r}
-glimpse(datos)
-summary(datos)
-```
+La página de donde se obtuvo el dataset no presentaba ninguna explicación de las variables, pero podemos extraer las siguientes conclusiones:
 
-Combinando estas funciones vemos que:
+- *Id* es un identificador para cada una de las filas y no aporta ninguna información concreta.
 
-- *Id* es un identificador que puede haber sido usado a la hora de combinar datos en este dataset. Su información estadistica por tanto no tiene ningín valor.
+- *Fecha* es una variable tipo *Date* que nos proporciona la fecha en que se tomaron las medidas del resto de variables numéricas. Tomaremos esta variable para la ordenación ascendente de los datos.
 
-- *Fecha* es una variable tipo *date* que nos proporciona la fecha en que se tomaron las medidas de las distintas variables. Tomaremos esta variable para la ordenación ascendente de los datos.
-
-- *Dia_de_la_semana* y *Dia_del_mes* son variables de tipo factor que indican en que día de la semana y en qué dia del mes se realiza la medida. Puede ser extraído a partir de *Fecha*. Como podemos acceder a estos valores mediante la librería _lubridate_ y la variable *Fecha* podemos prescindir de ellas.
+- *Dia_de_la_semana* y *Dia_del_mes* son variables de tipo factor que indican en que día de la semana y en qué dia del mes se realiza la medida. Puede ser extraído a partir de *Fecha* usando las funciones _wday()_ y _day()_, de la librería _lubridate_.
 
 - *Estacion* es una variable de tipo factor cuyos niveles son las distintas estaciones meteorológicas donde se tomaron las mediciones de las variables numéricas.
 
-- *PM1, PM2.5, PM10* son variables de tipo numérico con datos sobre la concentración de materiales particuldos (OM) de menos de 1, 2.5 y 10 micrómetros de diámetro respectivamente. Las tres variables presentan un número elevado de NA's.
+- *PM1, PM2.5, PM10* son variables de tipo numérico con datos sobre la concentración de materiales particuldos (OM) de menos de 1, 2.5 y 10 micrómetros de diámetro respectivamente.
 
-- *NO, NO2, NOx, O2, SO2, CO, NH3* son variables con datos sobre la concentración de estas moléculas inorgánicas consideradas contaminantes en el aire. *NO, NO2* y *NOx* presentan un número similar de NA's lo que puede ser indicativo de que estos datos han sido tomados a la vez. El resto de variables presenta un número mayor de NA's.
+- *NO, NO2, NOx, O2, SO2, CO, NH3* son variables con datos sobre la concentración de estas moléculas inorgánicas consideradas contaminantes en el aire.
 
-- *C7H8, C6H6, C8H10* son variables con datos sobre la concentración de estas moléculas orgánicas consideradas contaminantes en el aire. También presentan un número similar de NA's por lo que estos datos pueden a¡haber sido tomados a la vez.
+- *C7H8, C6H6, C8H10* son variables con datos sobre la concentración de estas moléculas orgánicas también consideradas contaminantes en el aire.
 
-- *Velocidad_del_viento, Direccion_del_viento, Temperatura, Humidad_relativa, Presion, Radiacion_solar, Precipitacion, Velocidad_maxima_del_viento* son variables numéricas con mediciones de estas distintas condiciones meteorológicas al momento de medir las concentraciones de moléculas contaminantes en el aire. Es interesante contar con estos datos para ver si influyen en los valores de contaminación. la velocidad y la dirección del viento tienen un número similar de NA's al igual que la temperatura, la humedad relativa, la presión y la radiación solar y las precipitaciones y la velocidad máxima del viento. En todos ls casos tenemos un número elevado de NA's.
+- *Velocidad_del_viento, Direccion_del_viento, Temperatura, Humidad_relativa, Presion, Radiacion_solar, Precipitacion, Velocidad_maxima_del_viento* son variables numéricas con mediciones de estas distintas condiciones ambientales al momento de medir las concentraciones de moléculas contaminantes en el aire. Es interesante contar con estos datos para ver si influyen en los valores de contaminación.
 
-- *As_(ng/m3), Ni_(ng/m3), Cd_(ng/m3), Pb_(ng/m3), B(a)p_(ng/m3)* son variables numéricas con datos de otras concentraciones de gases y metales contaminantes en el aire. Todos tienen el mismo número NA's por lo que de nuevo parecen haber sido medidos al mismo tiempo.
+- *As, Ni, Cd, Pb, B(a)p* son variables numéricas con datos de otras concentraciones de gases y metales contaminantes en el aire. Todos estas variables presentaban el prefijo (ng/m3) indicando las unidades en que se mide sus concentraciones. El resto de datos de concentraciones no presentan las unidades lo cuál nos hace sospechar que auiás los datos de estas variables fueron unidos a este dataset a posteriori.
 
-La conclusión de este primer análisis de los datos es que este dataset parece haber sido construido a partir de la unión de otros datasets, lo cuál explica que hayan tantos datos faltantes, ya que los datos de distintos datasets se tomaron en periódos de tiempo distintos, y al unirlos por la fecha queda una gran cantidad de NA's. Esto implica trabajar en distintos intervalos temporales para cada una de las preguntas que pretendamos responder.
-
-Vamos a comenzar eliminando algunas variables. Como hemos mencionado previamente, no necesitamos las variables *Dia_de_la_semana* y *Dia_del_mes* debido a que podemos acceder a estos valores mediante _wday()_ y _day()_, de la librería _lubridate_, respectivamente. Es importante recalcar que para _lurbidate_ el día 1 de la semana es el Domingo.
+- *Fecha_creación* y *Fecha_baja* son variables de tipo *Date* que parecen estar relacionadas con la creacion del dataset y que no parecen aportar información sobre nuestros datos.
 
 ```{r}
-datos <- datos[,!(colnames(datos) %in% c("Dia del mes", "Dia de la semana"))]
+unique(datos$Fecha_creacion)
+unique(datos$Fecha_baja)
+```
+ *Fecha_creación* solo presenta dos entradas distintas y *Fecha_baja* sólo presenta NA's por lo que estas variables parecen prescindibles`
+ 
+Vamos a mantener sólo las variables que aporten alguna información relevante:
+```{r}
+datos <- datos %>% select(-c('Id', 'Dia_de_la_semana','Dia_del_mes','Fecha_creacion', 'Fecha_baja'))
 ```
 
-Por otro lado, podemos intuir mediante el summary previo que la variable *Fecha creación* es peculiar. La analizamos individualmente.
+
+# Análisis de datos faltantes y especiales
+
+En primer lugar vamos reemplazar todos los posibles valores especiales (NULL, NaN, Inf...)  que pudieran haber en las varianles numéricas de nuestro dataset por NA's. De esta forma podemos tratar todos estos datos que no tienen sentido a la vez.
 
 ```{r}
-# Vemos los valores que toma y sus apariciones
-table(datos$`Fecha creacion`)
+variables_numericas <- colnames(datos[sapply(datos,is.numeric)])
+reemplazo_especiales <- function(x){
+  return(ifelse(is.finite(x), x, NA))
+}
+datos <- mutate(datos, across(all_of(variables_numericas), reemplazo_especiales))
 ```
 
-Vemos que solo toma dos valores que no nos aportan ninguna información relevante, por lo que la vamos a eliminar junto a la variable *Fecha baja* ya que esta solo toma valores NA.
+A continuación vamos a calcular el porcentaje de NA's que tiene cada variable;
 
 ```{r}
-datos <- datos[,!(colnames(datos) %in% c("Fecha creacion", "Fecha baja"))]
+porc_na <- function(x){
+  100*sum(is.na(x))/length(x)
+}
+datos %>% summarise(across(.cols = all_of(colnames(datos)), .fns = porc_na)) %>% pivot_longer(cols = all_of(colnames(datos)), names_to = 'Variable', values_to = "Porcentaje NA's") %>% arrange(desc(`Porcentaje NA's`)) %>% mutate(`Porcentaje NA's`=round(`Porcentaje NA's`, digits = 2))
 ```
 
-También vamos a ordenar el dataset por Fecha en orden ascendente
+Vemos como la variable B(a)p está casi vacía (sólo tiene una entrada) y hay varias variables con un porcentaje de NA's por encima del 90% y muchas otras por encima del 50%. Esto quizá sea debido a que algunas variables se empezaron a medir más tarde que otras o a que no en todas las estaciones se miden todas las variables.
+
 ```{r}
-datos <- arrange(datos,datos$Fecha)
+num_entradas <- function(x){
+  sum(!is.na(x))
+}
+datos %>% group_by(Estacion) %>% summarise(across(.cols = all_of(variables_numericas), .fns = num_entradas)) %>% pivot_longer(cols = all_of(variables_numericas), names_to = 'Variable', values_to = "Numero_entradas") %>% mutate(Variable = as.factor(Variable)) %>% pivot_wider(names_from = 'Estacion', values_from = 'Numero_entradas')
 ```
 
-Como hemos visto que nuestro dataset contiene un número muy significante de NA's, vamos a calcular el porcentaje de NA's de cada una de las variabes de nuestro dataset:
 ```{r}
-# Porcentaje de datos faltantes en cada variable
-sapply(lapply(datos, is.na), sum)*100/nrow(datos)
+datos %>% pivot_longer(cols = all_of(variables_numericas), names_to = 'variables_numericas', values_to = 'valor', values_drop_na = T) %>% ggplot(aes(x=Estacion, fill=variables_numericas)) + geom_bar() + theme(axis.text.x=element_text(angle=45, hjust=1))
+```
+
+```{r}
+datos %>% mutate(ano = factor(year(Fecha))) %>% ggplot(aes(x=ano, fill = Estacion)) + geom_bar() + labs(x = 'Año') + theme(axis.text.x=element_text(angle=45, hjust=1))
 ```
 
 A continuación queremos visualizar el período de tiempo entre la primera y la última medida de cada variable
@@ -196,10 +213,6 @@ ggplot(data = segmentos, aes(y = variable, color = porc_na)) + geom_segment(aes(
 A partir de este gráfico podemos ver como algunas variables empiezan a ser medidas a partir de cierta fecha. En concreto, los datos de *As*, *Cd*, *NH3*, *Ni*, *Pb* y *Prceipitacióo* empiezan a tomarse sólo a partir de 2019. En el caso del *B(a)* solo tenemos una entrada por lo que debemos dejar de considerar esta variable. Otras variables como *Velocidad_maxima_del_viento*  o *PM1* empiezan a tener datos un poco más tarde que el resto pero antes del 2019. Todas las demás variables presentan almenos algún dato en 2004. Por otro lado, los datos de *As*, *Ni*, *Cd* y *Ob* terminan antes que el resto de variables, a principios del 2022. Además, en el dódigo de colores se muestra el porcentaje de datos faltantes de cada variable en el período que ba desde la fecha de la primera toma de datos de esta variable hasta la fecha de la última. Cabe destacar en este aspecto que las variables *As*, *Cd*, *NH3*, *Ni*, *Pb*, tienen un porcentaje muy elevado de NA's (alrededor del 90%) al igual que las variabñes *C8H10*, *C7H8* y *C6H6*, pero en un período de tiempo mucho más pequeño.
 
 También queremos ver qué estaciones meteorológicas han estado recogiendo datos a lo largo de los años
-```{r}
-estaciones_anos <- datos %>% mutate(ano = factor(year(Fecha))) %>% select(c('ano','Estacion'))
-ggplot(data = estaciones_anos, aes(x=ano, fill = Estacion)) + geom_bar() + labs(x = 'Año') + theme(axis.text.x=element_text(angle=45, hjust=1))
-```
 
 Como podemos ver, desde 2004 hasta 2007 sólo tenemos datos de las estaciones de Pista de Silla y Viveros y posteriormente en los siguientes 5 años se van añadiendo datos de otras estaciones como la del Politécnico, Av. de Francia, Molí del Sol, Boulevard Sur, Valencia Centro y Conselleria a razón casi de una nueva estación al año. Desde 2013 hasta 2016 se mantienen las mismas estaciones y en los siguientes dos años se añaden datos de la estación del Puerto de Valencia, de la que posteriormente dejamos de obtener datos. Finalmente desde 2019 hasta 2022 se van añadiendo progresivamente cada año las estaciones de Nazaret, Puerto Molí Trans. Ponent, Puerto antic Turia y Valencia Olivereta. 2022 es el año donde tenemos datos de más estaciones distintas.
 
