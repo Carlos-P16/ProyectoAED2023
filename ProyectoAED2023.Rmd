@@ -57,6 +57,7 @@ library(lubridate) # Manejo de datos
 library(tidyr) # Manejo de datos
 library(dplyr) # Manejo de datos
 library(ggplot2) # Visualización de datos
+library(plotly) # Visualización de datos interactiva
 ```
 # Importación de los datos y análisis de las variables
 
@@ -159,7 +160,9 @@ Vemos como la variable B(a)p está casi vacía (sólo tiene una entrada) y hay v
 num_entradas <- function(x){
   sum(!is.na(x))
 }
-datos %>% group_by(Estacion) %>% summarise(across(.cols = all_of(variables_numericas), .fns = num_entradas)) %>% pivot_longer(cols = all_of(variables_numericas), names_to = 'Variable', values_to = "Numero_entradas") %>% mutate(Variable = factor(Variable, levels = variables_numericas, ordered = T)) %>% arrange(match(Variable, variables_numericas)) %>% ggplot(aes(x = Estacion, y=Variable, fill = Numero_entradas)) + geom_tile() + scale_fill_gradient(low = "white", high = "blue") + theme(axis.text.x=element_text(angle=45, hjust=1))
+est_var <- datos %>% group_by(Estacion) %>% summarise(across(.cols = all_of(variables_numericas), .fns = num_entradas)) %>% pivot_longer(cols = all_of(variables_numericas), names_to = 'Variable', values_to = "Numero_entradas") %>% mutate(Variable = factor(Variable, levels = variables_numericas, ordered = T)) %>% arrange(match(Variable, variables_numericas))
+p <- ggplot(data = est_var, aes(x = Estacion, y=Variable, fill = Numero_entradas)) + geom_tile() + scale_fill_gradient(low = "white", high = "blue") + theme(axis.text.x=element_text(angle=45, hjust=1))
+plotly::ggplotly(p)
 ```
 
 En este mapa de calor podemos ver qué varaibles mide cada estación meteorológica, además de la cantidad de datos que aporta cada una de ellas sobre cada varaible numéricaa. Vemos como sólo hay dos estaciones (Viveros y Boulevard Sud) que miden las variables *As*, *Pb*, *Ni* y *Cd* y que su número de entradas es bajo en comparación con otras variable, quizá debido a que se empezaron a tomar datos de estas variables más tarde que el resto. En el caso del *NH3* vemos que solo se ha medido en la estación Boulevard Sud. Las moléculas orgánicas *C8H10*, *C6H6*, *C7H8* sólo se miden en las estaciones de Pista de Silla y Viveros. Cabe destacar también que las estaciones que miden mayor cantidad de variables son Pista de Silla, Viveros y Boulevard Sud. Por otro lado, estaciones como Conselleria Meteo y Nazaret Meteo sólo miden las condiciones ambientales y no las concentraciones de contaminantes,al igual que la estación del Puerto de Valencia con la diferencia que en esta además se miden los niveles de partículas *PM10* y de *SO2*. Además, vemos como en la estación de Valencia Olivereta sólo se miden niveles de partículas *PM2.5*, *PM10* y óxidos de nitrógeno.
