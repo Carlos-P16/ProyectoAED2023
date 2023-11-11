@@ -159,16 +159,18 @@ Vemos como la variable B(a)p está casi vacía (sólo tiene una entrada) y hay v
 num_entradas <- function(x){
   sum(!is.na(x))
 }
-datos %>% group_by(Estacion) %>% summarise(across(.cols = all_of(variables_numericas), .fns = num_entradas)) %>% pivot_longer(cols = all_of(variables_numericas), names_to = 'Variable', values_to = "Numero_entradas") %>% mutate(Variable = as.factor(Variable)) %>% pivot_wider(names_from = 'Estacion', values_from = 'Numero_entradas')
+datos %>% group_by(Estacion) %>% summarise(across(.cols = all_of(variables_numericas), .fns = num_entradas)) %>% pivot_longer(cols = all_of(variables_numericas), names_to = 'Variable', values_to = "Numero_entradas") %>% mutate(Variable = factor(Variable, levels = variables_numericas, ordered = T)) %>% arrange(match(Variable, variables_numericas)) %>% ggplot(aes(x = Estacion, y=Variable, fill = Numero_entradas)) + geom_tile() + scale_fill_gradient(low = "white", high = "blue") + theme(axis.text.x=element_text(angle=45, hjust=1))
 ```
 
-```{r}
-datos %>% pivot_longer(cols = all_of(variables_numericas), names_to = 'variables_numericas', values_to = 'valor', values_drop_na = T) %>% ggplot(aes(x=Estacion, fill=variables_numericas)) + geom_bar() + theme(axis.text.x=element_text(angle=45, hjust=1))
-```
+En este mapa de calor podemos ver qué varaibles mide cada estación meteorológica, además de la cantidad de datos que aporta cada una de ellas sobre cada varaible numéricaa. Vemos como sólo hay dos estaciones (Viveros y Boulevard Sud) que miden las variables *As*, *Pb*, *Ni* y *Cd* y que su número de entradas es bajo en comparación con otras variable, quizá debido a que se empezaron a tomar datos de estas variables más tarde que el resto. En el caso del *NH3* vemos que solo se ha medido en la estación Boulevard Sud. Las moléculas orgánicas *C8H10*, *C6H6*, *C7H8* sólo se miden en las estaciones de Pista de Silla y Viveros. Cabe destacar también que las estaciones que miden mayor cantidad de variables son Pista de Silla, Viveros y Boulevard Sud. Por otro lado, estaciones como Conselleria Meteo y Nazaret Meteo sólo miden las condiciones ambientales y no las concentraciones de contaminantes,al igual que la estación del Puerto de Valencia con la diferencia que en esta además se miden los niveles de partículas *PM10* y de *SO2*. Además, vemos como en la estación de Valencia Olivereta sólo se miden niveles de partículas *PM2.5*, *PM10* y óxidos de nitrógeno.
+
+Ahora queremos ver qué estaciones han estado activas a lo largo de los años:
 
 ```{r}
 datos %>% mutate(ano = factor(year(Fecha))) %>% ggplot(aes(x=ano, fill = Estacion)) + geom_bar() + labs(x = 'Año') + theme(axis.text.x=element_text(angle=45, hjust=1))
 ```
+
+Como podemos ver, desde 2004 hasta 2007 sólo tenemos datos de las estaciones de Pista de Silla y Viveros, que se mantienen actvas hasta 2022. Posteriormente, en los siguientes 5 años (2008-2012) se van añadiendo datos de otras estaciones como la del Politécnico, Av. de Francia, Molí del Sol, Boulevard Sur, Valencia Centro y Conselleria a razón casi de una nueva estación al año y que se mantienen hasta el final (2022). Desde 2013 hasta 2016 se siguen viendo las mismas estaciones y en los siguientes dos años (2017-2018) se añaden datos de la estación del Puerto de Valencia, de la que posteriormente dejamos de obtener datos. Finalmente, desde 2019 hasta 2022 se van añadiendo progresivamente cada año las estaciones de Nazaret, Puerto Molí Trans. Ponent, Puerto antic Turia y Valencia Olivereta. 2022 es el año donde tenemos datos de más estaciones distintas.
 
 A continuación queremos visualizar el período de tiempo entre la primera y la última medida de cada variable
 
@@ -214,7 +216,6 @@ A partir de este gráfico podemos ver como algunas variables empiezan a ser medi
 
 También queremos ver qué estaciones meteorológicas han estado recogiendo datos a lo largo de los años
 
-Como podemos ver, desde 2004 hasta 2007 sólo tenemos datos de las estaciones de Pista de Silla y Viveros y posteriormente en los siguientes 5 años se van añadiendo datos de otras estaciones como la del Politécnico, Av. de Francia, Molí del Sol, Boulevard Sur, Valencia Centro y Conselleria a razón casi de una nueva estación al año. Desde 2013 hasta 2016 se mantienen las mismas estaciones y en los siguientes dos años se añaden datos de la estación del Puerto de Valencia, de la que posteriormente dejamos de obtener datos. Finalmente desde 2019 hasta 2022 se van añadiendo progresivamente cada año las estaciones de Nazaret, Puerto Molí Trans. Ponent, Puerto antic Turia y Valencia Olivereta. 2022 es el año donde tenemos datos de más estaciones distintas.
 
 # Influencia de carril bici
 
