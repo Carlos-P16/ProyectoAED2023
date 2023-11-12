@@ -262,6 +262,7 @@ Mediante el summary anterior podemos averiguar cuales son las unidades de medida
   - Dirección del viento: ángulo de 0 a 360 (º)
   - Precipitación: litros de agua por metro cuadrado (mm)
   - Radiación solar: Vatios por metro cuadrado (W/m2)
+  - Ruido: decibelios (dB)
 
 
 Densidades:
@@ -278,9 +279,9 @@ datos[2:8] %>%
 ```
 
 ```{r}
-# Gases
-datos[c(2,c(9:15))] %>%
-  pivot_longer(cols = 2:8, names_to = 'Variables', values_to = 'valor', values_drop_na = T) %>%
+# Meteorológicas y Ruido
+datos[c(2,c(9:16))] %>%
+  pivot_longer(cols = 2:9, names_to = 'Variables', values_to = 'valor', values_drop_na = T) %>%
   ggplot(aes(x=valor)) + 
   geom_histogram(aes(y=stat(density), fill='blue', alpha=0.6), bins=50) +
   geom_density() +
@@ -352,7 +353,7 @@ replace_outliers <- function(x, func) {
 
 Vamos a comprobar el funcionamiento de los métodos de detección de outliers. Lo aplicaremos sobre todas las variables numéricas.
 ```{r}
-columnas_numericas <- names(datos)[3:15]
+columnas_numericas <- names(datos)[3:16]
 
 m1 <- apply(datos[columnas_numericas], 2, tresSigma)
 m2 <- apply(datos[columnas_numericas], 2, hampel)
@@ -408,18 +409,17 @@ datos_no_outliers %>%
 En segundo lugar las variables meteorológicas:
 
 ```{r}
-# Variables meteorológicas
-# Gases
+# Variables meteorológicas y ruido
 datos_no_outliers %>%
-  select(all_of(variables[c(2,c(9:15))])) %>%
-  pivot_longer(cols = 2:8, names_to = 'Variables', values_to = 'valor', values_drop_na = T) %>%
+  select(all_of(variables[c(2,c(9:16))])) %>%
+  pivot_longer(cols = 2:9, names_to = 'Variables', values_to = 'valor', values_drop_na = T) %>%
   ggplot(aes(y=valor, fill=Estacion)) + 
   geom_boxplot(outlier.size = 1) +
   facet_wrap(~Variables, scales = "free_y") + 
   theme(axis.text.x = element_blank(), legend.position = "none")
 ```
 
-Podemos concluir con que generalmente la estación no influye en los valores de las variables. Esta información nos es útil para la imputación de NA's, ya que podemos emplear la media de las medidas obtenidas por otras estaciones.
+Podemos concluir con que generalmente la estación no influye en los valores de las variables. Esta información nos es útil para la imputación de NA's, ya que podemos emplear la media de las medidas obtenidas por otras estaciones. Respecto al ruido, el cual únicamente se mide en las estaciones de "Pista Silla" y "Viveros" si parece tener un valor un poco mayor en "Pista Silla". Esto puede deberse a que esta estación se encuentra en un lugar con mayor tránsito de coches.
 
 Ahora vamos a ver una sencilla evolución mediante boxplots de el valor de las variables a lo largo de los años. Comenzamos con los gases:
 
@@ -440,16 +440,16 @@ Se puede apreciar una leve reducción a lo largo de los años de los gases consi
 ```{r}
 # Gases
 datos_no_outliers %>%
-  select(all_of(variables[c(1,9:15)])) %>%
+  select(all_of(variables[c(1,9:16)])) %>%
   mutate(ano = factor(year(Fecha))) %>%
-  pivot_longer(cols = 2:8, names_to = 'Variables', values_to = 'valor', values_drop_na = T) %>%
+  pivot_longer(cols = 2:9, names_to = 'Variables', values_to = 'valor', values_drop_na = T) %>%
   ggplot(aes(y=valor, fill=ano)) + 
   geom_boxplot(outlier.size = 1) +
   facet_wrap(~Variables, scales = "free_y") + 
   theme(axis.text.x = element_blank(), legend.position = "none")
 ```
 
-Como era de esperar, las variables meteorológicas no han sufrido variaciones a lo largo de los años.
+Como era de esperar, las variables meteorológicas no han sufrido variaciones a lo largo de los años. Por otro lado si que se aprecia un leve aumento en el ruido.
 
 
 # Imputación de NA's
@@ -515,9 +515,9 @@ ggcorr(datos_limpios[3:15])
 ```
 Basándonos en las observaciones, podemos extraer las siguientes conclusiones:
 
-+ Existe una correlación negativa importante entre NOs y Ozono. Esto podría deberse a que la presencia de óxidos de nitrógeno puede contribuir a la degradación del ozono en la atmósfera, lo que tiene implicaciones para la calidad del aire y la contaminación.
++ Existe una correlación negativa importante entre NOs y Ozono. Esto podría deberse a que la presencia de óxidos de nitrógeno puede contribuir a la degradación del ozono en la atmósfera, lo que tiene implicaciones para la calidad del aire, la contaminación y el efecto hivernadero.
 
-+ Correlación positiva de NOx con el resto de NO (NO, NO2...). Esto se mencionó con anterioridad en la memoria.
++ Correlación positiva de NOx con el resto de NO (NO, NO2...). Como era de esperar y como se ha mencionado en la definición de las variables, NOx representa el conjunto de oxidos de nitrogeno, entre ellos el NO y el NO2.
 
 + Correlación positiva entre Temperatura y Radiación Solar. Esto es coherente con las estaciones más cálidas que a menudo experimentan más horas de sol y mayor radiación solar.
 
@@ -662,7 +662,7 @@ ggplot(datos_combinados, aes(x = Gas, y = Valor, fill = Tipo)) +
 
 # Evolución de la contaminación sonora a lo largo de los años
 
-Podemos observar un incremento visibleen la medición del ruido medio a lo largo de los años. Obviamente, en los datos del 2020 podemos observar un decrecimiento de los mismos, pero vemos cómo continúa aun así subiendo.
+Podemos observar un incremento visibleen la medición del ruido medio a lo largo de los años. Obviamente, en los datos del 2020 podemos observar un decrecimiento de los mismos, producto del parón de la pandemia, pero vemos cómo continúa aun así subiendo.
 
 ```{r}
 datos_ruido <- datos_limpios[c("Fecha","Ruido")] %>%
