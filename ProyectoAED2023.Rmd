@@ -58,6 +58,7 @@ library(tidyr) # Manejo de datos
 library(dplyr) # Manejo de datos
 library(ggplot2) # Visualización de datos
 library(plotly) # Visualización de datos interactiva
+library(stats)
 ```
 
 # Importación de los datos
@@ -128,7 +129,7 @@ Vamos a mantener sólo las variables que aporten alguna información relevante:
 datos <- datos %>% select(-c('Id', 'Dia_de_la_semana','Dia_del_mes','Fecha_creacion', 'Fecha_baja'))
 ```
 
-# Detección y eliminación de outliers
+# Detección y eliminación de outliers con métodos univariante
 
 A continuación, procederemos a detectar y eliminar outliers.
 
@@ -333,37 +334,6 @@ datos_limpios <- datos %>%
 datos_limpios <- datos_limpios[complete.cases(datos_limpios),]
 ```
 
-## Variables más y menos correlacionadas
-
-La correlación puede tener valores en el rango [-1,1]. Siendo -1 el indicador de un comportamiento absolutamente contrario y siendo 1 la misma variable, pues tiene exactamente el mismo comportamiento.
-
-A continuación, observaremos en orden descendente las correlaciones de variables superiores a 0'7. Además, también observaremos las correlaciones menores de 0'7 en orden descendente.
-
-Esto puede darnos información para reflexionar sobre la naturaleza y comportamiento de los datos.
-
-```{r}
-library(GGally)
-columnas_numericas_limpias <- setdiff(columnas_numericas,c('Pb','Cd','Ni','As','B(a)p','NH3','C7H8','C6H6','C8H10'))
-df <- cor(na.omit(datos_limpios[columnas_numericas_limpias])) %>%
-  as.data.frame(.)
-
-df$Variable1 <- rownames(df)
-
-cor <- df %>%
-  pivot_longer(cols = -Variable1, names_to = "Variable2", values_to = "Correlation")
-
-correlaciones <- cor[cor$Correlation > 0.7,] %>% arrange(desc(Correlation)) %>% filter(Variable1 != Variable2)
-correlaciones_inversas <- cor[cor$Correlation < -0.7,] %>% arrange(Correlation) %>% filter(Variable1 != Variable2)
-paste0("El numero total de correlaciones inversas es ",nrow(correlaciones_inversas),". Por lo tanto, solo estudiaremos las correlaciones directas")
-
-ggplot(correlaciones, aes(x = Variable1, y = Variable2, color = Correlation)) +
-  geom_tile(aes(fill = Correlation)) +
-  theme_minimal() +
-  labs(title = "Correlaciones Positivas")
-
-ggcorr(datos_limpios[columnas_numericas_limpias])
-```
-
 # Análisis univariante
 
 Variables de interés
@@ -430,6 +400,60 @@ Podemos concluir con que generalmente la estación no influye en los valores de 
 
 
 # Analisis bivariante
+
+## Detección y eliminación de outliers con métodos multivariable
+
+En este apartado, trabajaremos con el dataframe de datos que contiene la imputación de NA.
+
+```{r}
+distancia_mahalanobis <- function(x) {
+  media = colMeans(x)
+  S = cov(x)
+  
+  dist = mahalanobis(x,media,S)
+  umbral <- qchisq(0.95, df = ncol(x))
+
+  outliers <- which(dist > umbral)
+  
+  return(outliers)
+}
+
+instancias_outliers <- distancia_mahalanobis(datos_limpios[col_imputadas])
+paste0("La distancia de mahalanobis detecta como outliers ", length(instancias_outliers)," datos con una confianza del 95%. Con estos datos, lo que haremos no es cambiarlos por NA (pues miramos sobre instancias enteras), sino que directamente las eliminaremos.")
+
+datos_limpios_sin_outliers <- datos_limpios[-instancias_outliers,]
+```
+
+## Variables más y menos correlacionadas
+
+La correlación puede tener valores en el rango [-1,1]. Siendo -1 el indicador de un comportamiento absolutamente contrario y siendo 1 la misma variable, pues tiene exactamente el mismo comportamiento.
+
+A continuación, observaremos en orden descendente las correlaciones de variables superiores a 0'7. Además, también observaremos las correlaciones menores de 0'7 en orden descendente.
+
+Esto puede darnos información para reflexionar sobre la naturaleza y comportamiento de los datos.
+
+```{r}
+library(GGally)
+columnas_numericas_limpias <- setdiff(columnas_numericas,c('Pb','Cd','Ni','As','B(a)p','NH3','C7H8','C6H6','C8H10'))
+df <- cor(na.omit(datos_limpios[columnas_numericas_limpias])) %>%
+  as.data.frame(.)
+
+df$Variable1 <- rownames(df)
+
+cor <- df %>%
+  pivot_longer(cols = -Variable1, names_to = "Variable2", values_to = "Correlation")
+
+correlaciones <- cor[cor$Correlation > 0.7,] %>% arrange(desc(Correlation)) %>% filter(Variable1 != Variable2)
+correlaciones_inversas <- cor[cor$Correlation < -0.7,] %>% arrange(Correlation) %>% filter(Variable1 != Variable2)
+paste0("El numero total de correlaciones inversas es ",nrow(correlaciones_inversas),". Por lo tanto, solo estudiaremos las correlaciones directas")
+
+ggplot(correlaciones, aes(x = Variable1, y = Variable2, color = Correlation)) +
+  geom_tile(aes(fill = Correlation)) +
+  theme_minimal() +
+  labs(title = "Correlaciones Positivas")
+
+ggcorr(datos_limpios[columnas_numericas_limpias])
+```
 
 ```{r, eval=FALSE}
 library(GGally)
