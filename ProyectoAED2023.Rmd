@@ -117,7 +117,7 @@ unique(datos$Fecha_baja)
 
  *Fecha_creación* solo presenta dos entradas distintas y *Fecha_baja* sólo presenta NA's por lo que estas variables parecen prescindibles`
 
-Para evitar posibles problemas, renombramos las varianles con espacios en su nombre para trabajar sin comillas ' ' y cambiamos el superíndice de ³ (ng/m³) por un 3 normal.
+Para evitar posibles problemas, renombramos las varianles con espacios en su nombre para trabajar sin comillas ' ' y eliminamos el sufijo (ng/m³) de algunas variables
 
 ```{r}
 colnames(datos) <- gsub(x = colnames(datos), pattern=' ', replacement = '_')
@@ -128,6 +128,183 @@ Vamos a mantener sólo las variables que aporten alguna información relevante:
 ```{r}
 datos <- datos %>% select(-c('Id', 'Dia_de_la_semana','Dia_del_mes','Fecha_creacion', 'Fecha_baja'))
 ```
+
+
+# Análisis de datos faltantes y especiales
+
+En esta sección, previamente al análisis univariante y bivariante de las variables, vamos a realizar un análisis de la estructura del dataset. El dataset parece estar compuesto por la unión de un conjunto datasets, posiblemente por las distintas estaciones de las que provienen los datos. Con el objetivo de obtener un conjunto de datos consistente, analizaremos el porcentaje de NA's que hay por cada variable, luego veremos que datos proporcionan las estaciones y con que frecuencia, también comprobaremos cuando comenzaron a generar datos las estaciones y durante que periodos de tiempo se han obtenido las variables. 
+
+En primer lugar vamos reemplazar todos los posibles valores especiales (NULL, NaN, Inf...)  que pudieran haber en las varianles numéricas de nuestro dataset por NA's. De esta forma podemos tratar todos estos datos que no tienen sentido a la vez.
+
+```{r}
+variables_numericas <- colnames(datos[sapply(datos,is.numeric)])
+reemplazo_especiales <- function(x){
+  return(ifelse(is.finite(x), x, NA))
+}
+datos <- mutate(datos_no_outliers, across(all_of(variables_numericas), reemplazo_especiales))
+```
+
+A continuación vamos a calcular el porcentaje de NA's que tiene cada variable.
+
+```{r}
+porc_na <- function(x){
+  100*sum(is.na(x))/length(x)
+}
+datos %>% 
+  summarise(across(.cols = all_of(colnames(datos)), .fns = porc_na)) %>% 
+  pivot_longer(cols = all_of(colnames(datos)), names_to = 'Variable', values_to = "Porcentaje NA's") %>%
+  arrange(desc(`Porcentaje NA's`)) %>% 
+  mutate(`Porcentaje NA's`=round(`Porcentaje NA's`, digits = 2))
+```
+
+Vemos como la variable B(a)p está casi vacía (sólo tiene una entrada) y hay varias variables con un porcentaje de NA's por encima del 90% y muchas otras por encima del 50%. Esto quizá sea debido a que algunas variables se empezaron a medir más tarde que otras o a que no en todas las estaciones se miden todas las variables.
+
+A continuación creamos un mapa de calor para comprobar que variables se miden en cada estación y con que frecuencia.
+
+```{r}
+num_entradas <- function(x){
+  sum(!is.na(x))
+}
+est_var <- datos %>% 
+  group_by(Estacion) %>% 
+  summarise(across(.cols = all_of(variables_numericas), .fns = num_entradas)) %>% 
+  pivot_longer(cols = all_of(variables_numericas), names_to = 'Variable', values_to = "Numero_entradas") %>%
+  mutate(Variable = factor(Variable, levels = variables_numericas, ordered = T)) %>% 
+  arrange(match(Variable, variables_numericas))
+
+p <- ggplot(data = est_var, aes(x = Estacion, y=Variable, fill = Numero_entradas)) + 
+  geom_tile() + scale_fill_gradient(low = "white", high = "blue") + 
+  theme(axis.text.x=element_text(angle=45, hjust=1))
+
+plotly::ggplotly(p)
+```
+
+En este mapa de calor podemos ver qué variables mide cada estación meteorológica, además de la cantidad de datos que aporta cada una de ellas sobre cada varaible numérica. Vemos como sólo hay dos estaciones (Viveros y Boulevard Sud) que miden las variables *As*, *Pb*, *Ni* y *Cd* y que su número de entradas es bajo en comparación con otras variable, quizá debido a que se empezaron a tomar datos de estas variables más tarde que el resto. En el caso del *NH3* vemos que solo se ha medido en la estación Boulevard Sud. Las moléculas orgánicas *C8H10*, *C6H6*, *C7H8* sólo se miden en las estaciones de Pista de Silla y Viveros. Cabe destacar también que las estaciones que miden mayor cantidad de variables son Pista de Silla, Viveros y Boulevard Sud. Por otro lado, estaciones como Conselleria Meteo y Nazaret Meteo sólo miden las condiciones ambientales y no las concentraciones de contaminantes, al igual que la estación del Puerto de Valencia con la diferencia que en esta además se miden los niveles de partículas *PM10* y de *SO2*. Además, vemos como en la estación de Valencia Olivereta sólo se miden niveles de partículas *PM2.5*, *PM10* y óxidos de nitrógeno.
+
+Ahora queremos ver qué estaciones han estado activas a lo largo de los años:
+
+```{r}
+datos %>% 
+  mutate(ano = factor(year(Fecha))) %>% 
+  ggplot(aes(x=ano, fill = Estacion)) + 
+  geom_bar() + 
+  labs(x = 'Año') + 
+  theme(axis.text.x=element_text(angle=45, hjust=1))
+```
+
+Como podemos ver, desde 2004 hasta 2007 sólo tenemos datos de las estaciones de Pista de Silla y Viveros, que se mantienen actvas hasta 2022. Posteriormente, en los siguientes 5 años (2008-2012) se van añadiendo datos de otras estaciones como la del Politécnico, Av. de Francia, Molí del Sol, Boulevard Sur, Valencia Centro y Conselleria a razón casi de una nueva estación al año y que se mantienen hasta el final (2022). Desde 2013 hasta 2016 se siguen viendo las mismas estaciones y en los siguientes dos años (2017-2018) se añaden datos de la estación del Puerto de Valencia, de la que posteriormente dejamos de obtener datos. Finalmente, desde 2019 hasta 2022 se van añadiendo progresivamente cada año las estaciones de Nazaret, Puerto Molí Trans. Ponent, Puerto antic Turia y Valencia Olivereta. 2022 es el año donde tenemos datos de más estaciones distintas.
+
+A continuación queremos visualizar el período de tiempo entre la primera y la última medida de cada variable
+
+```{r}
+datos %>% 
+  pivot_longer(cols = all_of(variables_numericas), names_to = 'Variables', values_to = 'valor', values_drop_na = T) %>% 
+  mutate(Variables = factor(Variables, levels = variables_numericas, ordered = T)) %>% 
+  ggplot(aes(x=Fecha, y=valor, color = Variables)) + 
+  geom_line() + 
+  facet_wrap(Variables~., scales = "free_y") + 
+  theme(legend.position = "none") + 
+  theme(axis.text.x=element_text(angle=45, hjust=1), axis.text.y = element_blank(), axis.ticks.y = element_blank()) + 
+  labs(y = '') + 
+  scale_colour_manual(values = rainbow(26)) 
+```
+
+A partir de este gráfico podemos ver como algunas variables empiezan a ser medidas a partir de cierta fecha. En concreto, los datos de *As*, *Cd*, *Ni*, *Pb* empiezan a tomarse sólo a partir de 2019. Además, terminan antes que el resto de variables, a principios del 2022.. Otras variables como *Precipitacion*, *Velocidad_maxima_del_viento*,*PM1* o *NH3* empiezan a tener datos un poco más tarde que el resto pero antes del 2019. Todas las demás variables presentan almenos algún dato en 2004.
+
+Tras esta primera visualización de nuestros datos, podemos concluir que la gran cantidad de datos faltantes se debe a una combinación del hecho de que no todas las estaciones miden todas las variables, sumado a que los datos de ciertas variables se empiezan a medir posteriormente que el resto. Esto puede deberse a que la(s) estación(es) que recoge(n) datos de esta variable comienza(n) a funcionar en una fecha posterior al resto de estaciones o simplemente debido a que hasta cierto año no se instalan sensores en las estaciones para medir esas variables. En cualquier caso, dependiendo del análisis que se quiera realizar se habrán de escoger unas variables, y por ende un determinado número de estaciones que midan estas variables y un período de tiempo en que se estén recogiendo datos de estas variables.
+
+En nuestro caso vamos a escoger un período de 10 años, desde 2012 a 2022, ya que en este período de tiempo hay un número significativo de estaciones recogiendo datos y la mayoría de las variables son medidas en este intervalo de tiempo de forma consistente. No obstante, decidimos descartar las variables *Pb*, *Cd*, *Ni*, *As*, *B(a)p* y *NH3* debido a que se comienzan a medir después del 2012 y resultaría poco razonable imputar los datos de estas variables en esos años. De la misma forma, también descartamos las variables *C7H8*, *C6H6*, y *C8H10* debido a que presentan grandes períodos de tiempo con ausencia de datos intercalados entre 2012 y 2022, por lo que también sería poco razonable imputar estos datos. 
+
+# Análisis univariante
+
+En esta sección analizaremos las variables de forma individual con el objetivo de conocer sus magnitudes, es decir, las unidades de medida que representan, y como se distribuyen. Partiendo de las conclusiones obtenidas en el apartado anterior, nos parece interesante si existe una influencia en el valor de la variable por parte de la estación de la que proviene. En caso de no existir una influencia considerable podemos utilizar los valores obtenidos en otras estaciones para imputar otros. Finalmente comprobaremos si año influye en el valor de la variable, para ver si a lo largo del tiempo ha ocurrido algún cambio considerable.
+
+Variables de interés
+  - Fecha
+  - Estación
+  - Gases: NO, NO2, NOx, SO2, CO, O3 
+  - Meteorológicas: Temperatura, Humedad, Presion, Velocidad viento, Direccion viento, Radiación solar, Precipitación
+
+Comenzamos con un summary para analizar las magnitudes de las variables y como se distribuyen los datos.
+
+```{r}
+variables <- c("Fecha", "Estacion","NO", "NO2", "NOx", "SO2", "CO", "O3", "Temperatura", "Velocidad_del_viento", "Direccion_del_viento", "Humidad_relativa", "Presion", "Radiacion_solar", "Precipitacion")
+datos %>%
+  select(all_of(variables[-c(1:2)])) %>%
+  summary
+```
+
+# ```{r}
+# variables <- c("Fecha", "Estacion","NO", "NO2", "NOx", "SO2", "CO", "O3", "Temperatura", "Velocidad_del_viento", "Direccion_del_viento", "Humidad_relativa", "Presion", "Radiacion_solar", "Precipitacion")
+# datos_limpios %>%
+#   select(all_of(variables[-c(1:2)])) %>%
+#   summary
+# ```
+
+Mediante el summary anterior podemos averiguar cuales son las unidades de medida empleadas contrastando con información externa, ya que en la fuente de los datos no se proporcionan.
+
+  - Gases (NO, NO2, NOx, SO2, CO, O3): microgramos por metro cubico ($\mu$g/m3)
+  - Temperatura: grados centígrados (Cº)
+  - Humedad: porcentaje (%)
+  - Presión: hectopascales (hPa)
+  - Velocidad del viento: kilometros/hora (m/s)
+  - Dirección del viento: ángulo de 0 a 360 (º)
+  - Precipitación: litros de agua por metro cuadrado (mm)
+  - Radiación solar: Vatios por metro cuadrado (W/m2)
+
+Mediante boxplots vamos a analizar como se distribuyen los datos respecto a las estaciones. En primer lugar los gases:
+
+```{r}
+# Gases
+datos %>%
+  select(all_of(variables[2:8])) %>%
+  pivot_longer(cols = 2:7, names_to = 'Variables', values_to = 'valor', values_drop_na = T) %>%
+  ggplot(aes(y=valor, fill=Estacion)) + 
+  geom_boxplot(outlier.size = 1) +
+  facet_wrap(~Variables, scales = "free_y") + 
+  theme(axis.text.x = element_blank(), legend.position = "none")
+```
+
+En segundo lugar las variables meteorológicas:
+
+```{r}
+# Variables meteorológicas
+# Gases
+datos %>%
+  select(all_of(variables[c(2,c(9:15))])) %>%
+  pivot_longer(cols = 2:8, names_to = 'Variables', values_to = 'valor', values_drop_na = T) %>%
+  ggplot(aes(y=valor, fill=Estacion)) + 
+  geom_boxplot(outlier.size = 1) +
+  facet_wrap(~Variables, scales = "free_y") + 
+  theme(axis.text.x = element_blank(), legend.position = "none")
+```
+
+```{r}
+# Gases
+datos %>%
+  select(all_of(variables[c(1,3:8)])) %>%
+  mutate(ano = factor(year(Fecha))) %>%
+  pivot_longer(cols = 2:7, names_to = 'Variables', values_to = 'valor', values_drop_na = T) %>%
+  ggplot(aes(y=valor, fill=ano)) + 
+  geom_boxplot(outlier.size = 1) +
+  facet_wrap(~Variables, scales = "free_y") + 
+  theme(axis.text.x = element_blank(), legend.position = "none")
+```
+
+```{r}
+# Gases
+datos %>%
+  select(all_of(variables[c(1,9:15)])) %>%
+  mutate(ano = factor(year(Fecha))) %>%
+  pivot_longer(cols = 2:8, names_to = 'Variables', values_to = 'valor', values_drop_na = T) %>%
+  ggplot(aes(y=valor, fill=ano)) + 
+  geom_boxplot(outlier.size = 1) +
+  facet_wrap(~Variables, scales = "free_y") + 
+  theme(axis.text.x = element_blank(), legend.position = "none")
+```
+
+Podemos concluir con que generalmente la estación no influye en los valores de las variables. Esta información no es útil para la imputación de NA's, ya que podemos emplear la media de las medidas obtenidas 
+
 
 # Detección y eliminación de outliers con métodos univariante
 
@@ -219,7 +396,6 @@ ggplot(resultados, aes(x = Columna, y = Outliers_Detectados, fill = Metodo)) +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 ```
 
-
 Usaremos el metodo de Hampel, ya que por la naturaleza de los datos no podemos suponer los datos como una distribución Gaussiana.
 
 A continuación, reemplazaremos los outliers por NA.
@@ -229,90 +405,10 @@ datos_no_outliers <- datos %>%
   mutate_at(vars(all_of(columnas_numericas)), ~ replace_outliers(., hampel))
 ```
 
-# Análisis de datos faltantes y especiales
 
-En esta sección, previamente al análisis univariante y bivariante de las variables, vamos a realizar un análisis de la estructura del dataset. El dataset parece estar compuesto por la unión de un conjunto datasets, posiblemente por las distintas estaciones de las que provienen los datos. Con el objetivo de obtener un conjunto de datos consistente, analizaremos el porcentaje de NA's que hay por cada variable, luego veremos que datos proporcionan las estaciones y con que frecuencia, también comprobaremos cuando comenzaron a generar datos las estaciones y durante que periodos de tiempo se han obtenido las variables. Con esto determinaremos un periodo temporal y un conjunto de variables de interés consistente para el posterior análisis univariante y bivariante.
+# Imputación de NA's
 
-En primer lugar vamos reemplazar todos los posibles valores especiales (NULL, NaN, Inf...)  que pudieran haber en las varianles numéricas de nuestro dataset por NA's. De esta forma podemos tratar todos estos datos que no tienen sentido a la vez.
-
-```{r}
-variables_numericas <- colnames(datos[sapply(datos,is.numeric)])
-reemplazo_especiales <- function(x){
-  return(ifelse(is.finite(x), x, NA))
-}
-datos <- mutate(datos_no_outliers, across(all_of(variables_numericas), reemplazo_especiales))
-```
-
-A continuación vamos a calcular el porcentaje de NA's que tiene cada variable.
-
-```{r}
-porc_na <- function(x){
-  100*sum(is.na(x))/length(x)
-}
-datos %>% 
-  summarise(across(.cols = all_of(colnames(datos)), .fns = porc_na)) %>% 
-  pivot_longer(cols = all_of(colnames(datos)), names_to = 'Variable', values_to = "Porcentaje NA's") %>%
-  arrange(desc(`Porcentaje NA's`)) %>% 
-  mutate(`Porcentaje NA's`=round(`Porcentaje NA's`, digits = 2))
-```
-
-Vemos como la variable B(a)p está casi vacía (sólo tiene una entrada) y hay varias variables con un porcentaje de NA's por encima del 90% y muchas otras por encima del 50%. Esto quizá sea debido a que algunas variables se empezaron a medir más tarde que otras o a que no en todas las estaciones se miden todas las variables.
-
-```{r}
-num_entradas <- function(x){
-  sum(!is.na(x))
-}
-est_var <- datos %>% 
-  group_by(Estacion) %>% 
-  summarise(across(.cols = all_of(variables_numericas), .fns = num_entradas)) %>% 
-  pivot_longer(cols = all_of(variables_numericas), names_to = 'Variable', values_to = "Numero_entradas") %>%
-  mutate(Variable = factor(Variable, levels = variables_numericas, ordered = T)) %>% 
-  arrange(match(Variable, variables_numericas))
-
-p <- ggplot(data = est_var, aes(x = Estacion, y=Variable, fill = Numero_entradas)) + 
-  geom_tile() + scale_fill_gradient(low = "white", high = "blue") + 
-  theme(axis.text.x=element_text(angle=45, hjust=1))
-
-plotly::ggplotly(p)
-```
-
-En este mapa de calor podemos ver qué variables mide cada estación meteorológica, además de la cantidad de datos que aporta cada una de ellas sobre cada varaible numérica. Vemos como sólo hay dos estaciones (Viveros y Boulevard Sud) que miden las variables *As*, *Pb*, *Ni* y *Cd* y que su número de entradas es bajo en comparación con otras variable, quizá debido a que se empezaron a tomar datos de estas variables más tarde que el resto. En el caso del *NH3* vemos que solo se ha medido en la estación Boulevard Sud. Las moléculas orgánicas *C8H10*, *C6H6*, *C7H8* sólo se miden en las estaciones de Pista de Silla y Viveros. Cabe destacar también que las estaciones que miden mayor cantidad de variables son Pista de Silla, Viveros y Boulevard Sud. Por otro lado, estaciones como Conselleria Meteo y Nazaret Meteo sólo miden las condiciones ambientales y no las concentraciones de contaminantes, al igual que la estación del Puerto de Valencia con la diferencia que en esta además se miden los niveles de partículas *PM10* y de *SO2*. Además, vemos como en la estación de Valencia Olivereta sólo se miden niveles de partículas *PM2.5*, *PM10* y óxidos de nitrógeno.
-
-Ahora queremos ver qué estaciones han estado activas a lo largo de los años:
-
-```{r}
-datos %>% 
-  mutate(ano = factor(year(Fecha))) %>% 
-  ggplot(aes(x=ano, fill = Estacion)) + 
-  geom_bar() + 
-  labs(x = 'Año') + 
-  theme(axis.text.x=element_text(angle=45, hjust=1))
-```
-
-Como podemos ver, desde 2004 hasta 2007 sólo tenemos datos de las estaciones de Pista de Silla y Viveros, que se mantienen actvas hasta 2022. Posteriormente, en los siguientes 5 años (2008-2012) se van añadiendo datos de otras estaciones como la del Politécnico, Av. de Francia, Molí del Sol, Boulevard Sur, Valencia Centro y Conselleria a razón casi de una nueva estación al año y que se mantienen hasta el final (2022). Desde 2013 hasta 2016 se siguen viendo las mismas estaciones y en los siguientes dos años (2017-2018) se añaden datos de la estación del Puerto de Valencia, de la que posteriormente dejamos de obtener datos. Finalmente, desde 2019 hasta 2022 se van añadiendo progresivamente cada año las estaciones de Nazaret, Puerto Molí Trans. Ponent, Puerto antic Turia y Valencia Olivereta. 2022 es el año donde tenemos datos de más estaciones distintas.
-
-A continuación queremos visualizar el período de tiempo entre la primera y la última medida de cada variable
-
-```{r}
-datos %>% 
-  pivot_longer(cols = all_of(variables_numericas), names_to = 'Variables', values_to = 'valor', values_drop_na = T) %>% 
-  mutate(Variables = factor(Variables, levels = variables_numericas, ordered = T)) %>% 
-  ggplot(aes(x=Fecha, y=valor, color = Variables)) + 
-  geom_line() + 
-  facet_wrap(Variables~., scales = "free_y") + 
-  theme(legend.position = "none") + 
-  theme(axis.text.x=element_text(angle=45, hjust=1), axis.text.y = element_blank(), axis.ticks.y = element_blank()) + 
-  labs(y = '') + 
-  scale_colour_manual(values = rainbow(26)) 
-```
-
-A partir de este gráfico podemos ver como algunas variables empiezan a ser medidas a partir de cierta fecha. En concreto, los datos de *As*, *Cd*, *Ni*, *Pb* empiezan a tomarse sólo a partir de 2019. Además, terminan antes que el resto de variables, a principios del 2022.. Otras variables como *Precipitacion*, *Velocidad_maxima_del_viento*,*PM1* o *NH3* empiezan a tener datos un poco más tarde que el resto pero antes del 2019. Todas las demás variables presentan almenos algún dato en 2004.
-
-Tras esta primera visualización de nuestros datos, podemos concluir que la gran cantidad de datos faltantes se debe a una combinación del hecho de que no todas las estaciones miden todas las variables, sumado a que los datos de ciertas variables se empiezan a medir posteriormente que el resto. Esto puede deberse a que la(s) estación(es) que recoge(n) datos de esta variable comienza(n) a funcionar en una fecha posterior al resto de estaciones o simplemente debido a que hasta cierto año no se instalan sensores en las estaciones para medir esas variables. En cualquier caso, dependiendo del análisis que se quiera realizar se habrán de escoger unas variables, y por ende un determinado número de estaciones que midan estas variables y un período de tiempo en que se estén recogiendo datos de estas variables.
-
-En nuestro caso vamos a escoger un período de 10 años, desde 2012 a 2022, ya que en este período de tiempo hay un número significativo de estaciones recogiendo datos y la mayoría de las variables son medidas en este intervalo de tiempo de forma consistente. No obstante, decidimos descartar las variables *Pb*, *Cd*, *Ni*, *As*, *B(a)p* y *NH3* debido a que se comienzan a medir después del 2012 y resultaría poco razonable imputar los datos de estas variables en esos años. De la misma forma, también descartamos las variables *C7H8*, *C6H6*, y *C8H10* debido a que presentan grandes períodos de tiempo con ausencia de datos intercalados entre 2012 y 2022, por lo que también sería poco razonable imputar estos datos. 
-
-Centrándonos en el resto de variables, si bien son más consistentes en lo que se refiere a las entradas diarias de cada variable, todavía hay muchos datos faltantes. No obstante, podemos aprovechar el hecho de que los datos diarios de las variables en todas las estaciones de Valencia suelen ser muy parecidos, por lo que decidimos imputar los datos faltantes en cada día con la media de esta variable sobre todas las estaciones. Tras realizar esta imputación, todavía hay algunas variables que presentan NA's, esto se debe a que hay algunos días donde donde esta variable no se ha medido en ninguna de las estaciones. Esto sólo ocurre en el 11% de las observaciones, por lo que decidimos desprendernos de estas observaciones, ya que el volúmen de datos es suficientemente grande y los datos todavía pueden considerarse diarios,
+Centrándonos en el resto de variables, si bien son más consistentes en lo que se refiere a las entradas diarias de cada variable, todavía hay muchos datos faltantes. No obstante, podemos aprovechar el hecho de que los datos diarios de las variables en todas las estaciones de Valencia suelen ser muy parecidos, por lo que decidimos imputar los datos faltantes en cada día con la media de esta variable sobre todas las estaciones. Tras realizar esta imputación, todavía hay algunas variables que presentan NA's, esto se debe a que hay algunos días donde donde esta variable no se ha medido en ninguna de las estaciones. Esto sólo ocurre en el 11% de las observaciones, por lo que decidimos desprendernos de estas observaciones, ya que el volúmen de datos es suficientemente grande y los datos todavía pueden considerarse diarios.
 
 ```{r}
 imputacion_NAs <- function(x){
@@ -323,7 +419,7 @@ col_imputadas <- c("PM1","PM2.5","PM10","NO","NO2","NOx","O3","SO2","CO","Ruido"
 
 datos_limpios <- datos %>% 
   filter(Fecha >= as.Date('2012-01-01', format = '%Y-%m-%d'), Fecha <= as.Date('2022-01-01', format = '%Y-%m-%d')) %>%
-  select(-c('Pb','Cd','Ni','As','B(a)p','NH3','C7H8','C6H6','C8H10')) %>% 
+  select(-c('Pb_(ng/m3)','Cd_(ng/m3)','Ni_(ng/m3)','As_(ng/m3)','B(a)p_(ng/m3)','NH3','C7H8','C6H6','C8H10')) %>% 
   group_by(Fecha) %>% 
   mutate(across(.cols = all_of(col_imputadas), imputacion_NAs)) %>% 
   mutate(across(all_of(col_imputadas), reemplazo_especiales)) %>%
@@ -334,72 +430,32 @@ datos_limpios <- datos %>%
 datos_limpios <- datos_limpios[complete.cases(datos_limpios),]
 ```
 
-# Análisis univariante
-
-Variables de interés
-  - Fecha
-  - Estación
-  - Gases: NO, NO2, NOx, SO2, CO, O3 
-  - Meteorológicas: Temperatura, Humedad, Presion, Velocidad viento, Direccion viento, Radiación solar, Precipitación
-
-Comenzamos con un summary para analizar las magnitudes de las variables y como se distribuyen los datos.
-
-```{r}
-variables <- c("Fecha", "Estacion","NO", "NO2", "NOx", "SO2", "CO", "O3", "Temperatura", "Velocidad_del_viento", "Direccion_del_viento", "Humidad_relativa", "Presion", "Radiacion_solar", "Precipitacion")
-datos %>%
-  select(all_of(variables[-c(1:2)])) %>%
-  summary
-```
-
-```{r}
-variables <- c("Fecha", "Estacion","NO", "NO2", "NOx", "SO2", "CO", "O3", "Temperatura", "Velocidad_del_viento", "Direccion_del_viento", "Humidad_relativa", "Presion", "Radiacion_solar", "Precipitacion")
-datos_limpios %>%
-  select(all_of(variables[-c(1:2)])) %>%
-  summary
-```
-
-Mediante el summary anterior podemos averiguar cuales son las unidades de medida empleadas contrastando con información externa, ya que en la fuente de los datos no se proporcionan.
-
-  - Gases (NO, NO2, NOx, SO2, CO, O3): microgramos por metro cubico ($\mu$g/m3)
-  - Temperatura: grados centígrados (Cº)
-  - Humedad: porcentaje (%)
-  - Presión: hectopascales (hPa)
-  - Velocidad del viento: kilometros/hora (m/s)
-  - Dirección del viento: ángulo de 0 a 360 (º)
-  - Precipitación: litros de agua por metro cuadrado (mm)
-  - Radiación solar: Vatios por metro cuadrado (W/m2)
-
-Mediante boxplots vamos a analizar como se distribuyen los datos respecto a las estaciones. En primer lugar los gases:
-
-```{r}
-# Gases
-datos %>%
-  select(all_of(variables[2:8])) %>%
-  pivot_longer(cols = 2:7, names_to = 'Variables', values_to = 'valor', values_drop_na = T) %>%
-  ggplot(aes(y=valor, fill=Estacion)) + 
-  geom_boxplot(outlier.size = 1) +
-  facet_wrap(~Variables, scales = "free_y") + 
-  theme(axis.text.x = element_blank(), legend.position = "none")
-```
-
-En segundo lugar las variables meteorológicas:
-
-```{r}
-# Variables meteorológicas
-# Gases
-datos %>%
-  select(all_of(variables[c(2,c(9:15))])) %>%
-  pivot_longer(cols = 2:8, names_to = 'Variables', values_to = 'valor', values_drop_na = T) %>%
-  ggplot(aes(y=valor, fill=Estacion)) + 
-  geom_boxplot(outlier.size = 1) +
-  facet_wrap(~Variables, scales = "free_y") + 
-  theme(axis.text.x = element_blank(), legend.position = "none")
-```
-
-Podemos concluir con que generalmente la estación no influye en los valores de las variables. [...]
-
 
 # Analisis bivariante
+
+```{r, eval=FALSE}
+library(GGally)
+corr1 <- datos %>%
+  select(all_of(variables[3:15])) %>%
+  na.omit %>%
+  cor
+
+corr2 <- datos_limpios %>%
+  select(all_of(variables[3:15])) %>%
+  na.omit %>%
+  cor
+
+diff <- abs(corr1-corr2)
+diff
+
+ggcorr(datos %>%
+  select(all_of(variables[3:15])))
+
+ggpairs(datos %>%
+  select(all_of(variables[3:15])))
+```
+NOTA: correlación negativa NOs con Ozono (Cuando mas NOS menos Ozono...)
+
 
 ## Detección y eliminación de outliers con métodos multivariable
 
@@ -455,29 +511,6 @@ ggplot(correlaciones, aes(x = Variable1, y = Variable2, color = Correlation)) +
 ggcorr(datos_limpios[columnas_numericas_limpias])
 ```
 
-```{r, eval=FALSE}
-library(GGally)
-corr1 <- datos %>%
-  select(all_of(variables[3:15])) %>%
-  na.omit %>%
-  cor
-
-corr2 <- datos_limpios %>%
-  select(all_of(variables[3:15])) %>%
-  na.omit %>%
-  cor
-
-diff <- abs(corr1-corr2)
-diff
-
-ggcorr(datos %>%
-  select(all_of(variables[3:15])))
-
-ggpairs(datos %>%
-  select(all_of(variables[3:15])))
-```
-NOTA: correlación negativa NOs con Ozono (Cuando mas NOS menos Ozono...)
-
 
 # Influencia de carril bici
 
@@ -519,5 +552,11 @@ ggplot(data = datos_mensuales, aes(x = mes, y = media_NO2, group = ano, color = 
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 ```
 
+NOTA: El gráfico de NO2 se ve mucho mejor la reducción cuando se observan todas las estaciones.
+
 Si bien no se observan cambios significativos en los niveles de SO2, en los niveles de NO2 sí que podemos observar una evolución.
+
+Respecto al NO2 si que se puede apreciar una reducción a lo largo de los años. Con unos niveles más bajos especialmente en los últimos 3 años. Además se puede apreciar una periodicidad, concretamente una reducción de los niveles de NO2 en los meses de verano. Esto coincide con el momento del año donde menos gente vive en la ciudad y por lo tanto menos tráfico hay. En conclusión parece que las medidas de transporte que se han tomado en la ciudad han influenciado en la reducción de gases contaminantes.
+
+
 
