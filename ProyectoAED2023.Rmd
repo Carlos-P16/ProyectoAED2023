@@ -312,7 +312,18 @@ A continuación, observaremos en orden descendente las correlaciones de variable
 Esto puede darnos información para reflexionar sobre la naturaleza y comportamiento de los datos.
 
 ```{r}
-correlation_matrix <- cor(datos_clean_outliers[columnas_numericas])
+df <- cor(na.omit(datos_clean_outliers[columnas_numericas])) %>%
+  as.data.frame(.)
+
+df$Variable1 <- rownames(df)
+
+cor <- df %>%
+  pivot_longer(cols = -Variable1, names_to = "Variable2", values_to = "Correlation")
+
+correlaciones <- cor[cor$Correlation > 0.7]
+correlaciones_inversas <- cor[cor$Correlation < -0.7]
+
+#ggcorr(datos_clean_outliers[columnas_numericas])
 ```
 
 
