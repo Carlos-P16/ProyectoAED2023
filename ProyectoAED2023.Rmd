@@ -31,19 +31,13 @@ Para ello se van a plantear una serie de objetivos es forma de preguntas que req
 
 + ¿?Influencia del cambio en el tráfico hacia el centro de la ciudad en los últimos años. (carriles bici) : Comprobar posible reducción de gases emitidos por vehículos a motor en las estaciones más céntricas.
 
-+ ¿?Relación radiación solar con ozono
++ ¿?Existe alguna correlación entre la calidad del aire y el día de la semana/año
 
 + ¿?Existe cierta evolución de la contaminación sonora (años/zonas)
 
-+ ¿?Existe cierta evolución de la temperatura
++ ¿?Existe cierta evolución de la temperatura (A medias, se puede hacer algo más o incluso relacionarlo con las precipitaciones. No se me ocurre cómo pero se le podría dar una vuelta)
 
-+ ¿?Existe cierta evolución de la contaminación. Como medir la contaminación
-
-+ ¿?Existe alguna diferencia entre las distintas estaciones
-
-+ ¿?Existe alguna correlación entre la calidad del aire y el día de la semana/año
-
-+ ...
++ ¿?Existe cierta evolución de la contaminación. Como medir la contaminación (Falta esta)
 
 A lo largo del desarrollo del proyecto se irán planteando y resolviendo las preguntas anteriores junto a su razonamiento y conclusiones.
 
@@ -224,11 +218,12 @@ Variables de interés
   - Estación
   - Gases: NO, NO2, NOx, SO2, CO, O3 
   - Meteorológicas: Temperatura, Humedad, Presion, Velocidad viento, Direccion viento, Radiación solar, Precipitación
+  - Calidad de vida: Ruido
 
 Comenzamos con un summary de las variables numéricas para analizar las magnitudes de las variables y como se distribuyen los datos.
 
 ```{r}
-variables <- c("Fecha", "Estacion","NO", "NO2", "NOx", "SO2", "CO", "O3", "Temperatura", "Velocidad_del_viento", "Direccion_del_viento", "Humidad_relativa", "Presion", "Radiacion_solar", "Precipitacion")
+variables <- c("Fecha", "Estacion","NO", "NO2", "NOx", "SO2", "CO", "O3", "Temperatura", "Velocidad_del_viento", "Direccion_del_viento", "Humidad_relativa", "Presion", "Radiacion_solar", "Precipitacion","Ruido")
 
 mystats <- function(x, na.omit=TRUE){
                 if (na.omit)
@@ -518,10 +513,15 @@ ggcorr(datos_limpios[3:15])
 
 #ggpairs(datos_limpios[3:15])
 ```
-NOTA: correlación negativa NOs con Ozono (Cuando mas NOS menos Ozono...)
-NOTA: Mencionar lo dicho en la descripción del dataset sobre la correlación de NOx = (NO,NO2,...)
-NOTA: Temperatura y radiación solar
+Basándonos en las observaciones, podemos extraer las siguientes conclusiones:
 
++ Existe una correlación negativa importante entre NOs y Ozono. Esto podría deberse a que la presencia de óxidos de nitrógeno puede contribuir a la degradación del ozono en la atmósfera, lo que tiene implicaciones para la calidad del aire y la contaminación.
+
++ Correlación positiva de NOx con el resto de NO (NO, NO2...). Esto se mencionó con anterioridad en la memoria.
+
++ Correlación positiva entre Temperatura y Radiación Solar. Esto es coherente con las estaciones más cálidas que a menudo experimentan más horas de sol y mayor radiación solar.
+
++ Correlación entre Radiación Solar y Ozono. Esto tiene sentido ya que la capa de ozono filtra la mayor parte de la radiación ultravioleta proveniente del sol, por lo tanto están muy relacionados entre ellos.
 
 ## Detección y eliminación de outliers con métodos multivariable
 
@@ -687,7 +687,7 @@ datos_ruido_estaciones <- datos_limpios[c("Fecha","Estacion","Ruido")] %>%
   group_by(Ano,Estacion) %>%
   summarize(Media_Ruido = mean(Ruido, na.rm = TRUE, .groups = "drop")) %>%
   group_by(Ano) %>%
-  summarize(Desviacion_por_ano = sd(Media_Ruido))
+  summarize(Desviacion_por_ano = sd(Media_Ruido,na.rm=TRUE))
 
 ggplot(datos_ruido_estaciones, aes(x = Ano, y = Desviacion_por_ano)) +
   geom_line() +
@@ -698,4 +698,42 @@ mean(datos_ruido_estaciones$Desviacion_por_ano)
 ```
 
 Podemos observar que, para los valores que tratamos (sobre 50 y 60), una desviación del 0.3 es despreciable.
+
+# Evolución de la temperatura a lo largo de los años
+
+También se puede observar el aumento generalizado de la temperatura a lo largo de los años. Es curioso que, pese a que en el mundo existe un aumento generalizado de la temperatura, en Valencia estuvo bajando esta tendencia y no es hasta el año 2017 que comenzaron a subir de nuevo. Pese a lo mencionado, bastante visible el hecho de que nos encontramos en una tendencia creciente.
+
+```{r}
+datos_temperatura <- datos_limpios[c("Fecha","Temperatura")] %>%
+  mutate(Ano = year(Fecha)) %>%
+  select(-Fecha) %>%
+  group_by(Ano) %>%
+  summarize(Media_Temperatura = mean(Temperatura, na.rm = TRUE, .groups = "drop"))
+
+ggplot(datos_temperatura, aes(x = Ano, y = Media_Temperatura)) +
+  geom_line() +
+  labs(x = "Año", y = "Media de Temperatura") +
+  theme_minimal() +
+  scale_y_continuous(limits = c(min(datos_temperatura$Media_Temperatura), max(datos_temperatura$Media_Temperatura)))
+```
+
+# Cómo se ha comportado la contaminación a lo largo de los años
+
+Cuando contestamos a la primera pregunta, nos centramos en gases que soltaban los carburantes y solo observamos las estaciones más cercanas al centro de Valencia. En esta ocasión, estudiaremos el comportamiento de todos los gases contaminantes en todas las estaciones.
+
+Esta vez podemos observar que se produjo un pico de todos los gases en el año 2016, pero que por lo general las medidas de estos se han mantenido bastante estables o incluso decrecientes en el tiempo.
+
+```{r}
+datos_gases <- datos_limpios[c("Fecha", "NO", "NO2", "NOx", "SO2", "CO")] %>%
+  mutate(Ano = year(Fecha)) %>%
+  select(-Fecha) %>%
+  pivot_longer(cols = c("NO", "NO2", "NOx", "SO2", "CO"), names_to = "Gas", values_to = "Valor") %>%
+  group_by(Ano, Gas) %>%
+  summarize(Media = mean(Valor, na.rm = TRUE, .groups = "drop"))
+
+ggplot(datos_gases, aes(x=Ano,y=Media,color=Gas)) + 
+  geom_line() +
+  labs(x = "Año") +
+  theme_minimal()
+```
 
