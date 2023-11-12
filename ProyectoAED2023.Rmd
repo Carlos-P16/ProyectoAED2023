@@ -624,5 +624,78 @@ Si bien no se observan cambios significativos en los niveles de SO2, en los nive
 
 Respecto al NO2 si que se puede apreciar una reducción a lo largo de los años. Con unos niveles más bajos especialmente en los últimos 3 años. Además se puede apreciar una periodicidad, concretamente una reducción de los niveles de NO2 en los meses de verano. Esto coincide con el momento del año donde menos gente vive en la ciudad y por lo tanto menos tráfico hay. En conclusión parece que las medidas de transporte que se han tomado en la ciudad han influenciado en la reducción de gases contaminantes.
 
+# Relación entre la calidad del aire y el dia de la semana
 
+Aqui observamos si, en general la calidad del aire se ve influenciada por el día de la semana. Queremos sobre todo fijarnos en la distinción entre días laborables y de descanso. Podemos comprobar cómo, efectivamente, existe una disminución en los gases contaminantes los días festivos con respecto a los días laborables.
+
+```{r}
+gases_interes <- c("NO","NO2","NOx","SO2","CO")
+
+datos_semanales <- datos_limpios %>%
+  mutate(Dia_de_la_semana = factor(wday(Fecha))) %>%
+  filter(!(Dia_de_la_semana %in% c(1,6))) %>%
+  select(gases_interes) %>%
+  summarise_all(.funs = list(mean)) %>%
+  pivot_longer(cols=everything(),names_to = "Gas",values_to="Valor")
+
+datos_festivos <- datos_limpios %>%
+  mutate(Dia_de_la_semana = factor(wday(Fecha))) %>%
+  filter(Dia_de_la_semana %in% c(1,6)) %>%
+  select(gases_interes) %>%
+  summarise_all(.funs = list(mean)) %>%
+  pivot_longer(cols=everything(),names_to = "Gas",values_to="Valor")
+
+datos_combinados <- rbind(
+  transform(datos_semanales, Tipo = "Semanal"),
+  transform(datos_festivos, Tipo = "Festivo")
+)
+
+ggplot(datos_combinados, aes(x = Gas, y = Valor, fill = Tipo)) +
+  geom_bar(stat = "identity", position = position_dodge()) +
+  labs(title = "Valores de Gases Semanales y Festivos",
+       x = "Gas",
+       y = "Valor") +
+  scale_fill_manual(values = c("Semanal" = "blue", "Festivo" = "red")) +
+  theme_minimal() +
+  theme(legend.title = element_blank())
+```
+
+# Evolución de la contaminación sonora a lo largo de los años
+
+Podemos observar un incremento visibleen la medición del ruido medio a lo largo de los años. Obviamente, en los datos del 2020 podemos observar un decrecimiento de los mismos, pero vemos cómo continúa aun así subiendo.
+
+```{r}
+datos_ruido <- datos_limpios[c("Fecha","Ruido")] %>%
+  mutate(Ano = year(Fecha)) %>%
+  select(-Fecha) %>%
+  group_by(Ano) %>%
+  summarize(Media_Ruido = mean(Ruido, na.rm = TRUE, .groups = "drop"))
+
+ggplot(datos_ruido, aes(x = Ano, y = Media_Ruido)) +
+  geom_line() +
+  labs(x = "Año", y = "Media de Ruido") +
+  theme_minimal() +
+  scale_y_continuous(limits = c(min(datos_ruido$Media_Ruido), max(datos_ruido$Media_Ruido)))
+```
+
+Ahora comprobaremos si este ruido medido depende de la zona dónde la midamos. Para ello, vamos a observar el comportamiento de la varianza de la media de los ruidos agrupados por estaciones. Calcularemos la desviación para cada año y, finalmente, la media de todas las desviaciones Si el valor es pequeño, entonces podemos afirmar que el incremento en el ruido no es de ciertas zonas, sino generalizado.
+
+```{r}
+datos_ruido_estaciones <- datos_limpios[c("Fecha","Estacion","Ruido")] %>%
+  mutate(Ano = year(Fecha)) %>%
+  select(-Fecha) %>%
+  group_by(Ano,Estacion) %>%
+  summarize(Media_Ruido = mean(Ruido, na.rm = TRUE, .groups = "drop")) %>%
+  group_by(Ano) %>%
+  summarize(Desviacion_por_ano = sd(Media_Ruido))
+
+ggplot(datos_ruido_estaciones, aes(x = Ano, y = Desviacion_por_ano)) +
+  geom_line() +
+  labs(x = "Año", y = "Desviacion de ruido por estación") +
+  theme_minimal() 
+
+mean(datos_ruido_estaciones$Desviacion_por_ano)
+```
+
+Podemos observar que, para los valores que tratamos (sobre 50 y 60), una desviación del 0.3 es despreciable.
 
