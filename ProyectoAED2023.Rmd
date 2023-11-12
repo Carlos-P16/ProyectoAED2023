@@ -128,8 +128,105 @@ Vamos a mantener sólo las variables que aporten alguna información relevante:
 datos <- datos %>% select(-c('Id', 'Dia_de_la_semana','Dia_del_mes','Fecha_creacion', 'Fecha_baja'))
 ```
 
+# Detección y eliminación de outliers
+
+A continuación, procederemos a detectar y eliminar outliers.
+
+```{r}
+tresSigma <- function(x){
+  media <- mean(x,na.rm=TRUE)
+  desviacion <- sd(x,na.rm=TRUE)
+  lim_low <- media - 3 * desviacion
+  lim_upp <- media + 3 * desviacion
+  
+  outliers <- x[x < lim_low | x > lim_upp]
+  
+  return(outliers)
+}
+
+hampel <- function(x){
+  mediana <- median(x, na.rm = TRUE)
+  madm <- mad(x, constant = 1.4826, na.rm = TRUE)
+  umbral <- 3 * madm
+  
+  outliers <- x[abs(x-mediana) > umbral]
+  
+  return(outliers)
+}
+
+boxplot <- function(x){
+  q1 <- quantile(x, 0.25, na.rm = TRUE)
+  q3 <- quantile(x, 0.75, na.rm = TRUE)
+  
+  iqr <- q3 - q1
+  
+  lower_limit <- q1 - 1.5 * iqr
+  upper_limit <- q3 + 1.5 * iqr
+  
+  outliers <- x[x < lower_limit | x > upper_limit]
+  
+  return(outliers)
+}
+
+percentil <- function(x){
+  p5 <- quantile(x, 0.05, na.rm = TRUE)
+  p95 <- quantile(x, 0.95, na.rm = TRUE)
+  
+  outliers <- x[x < p5 | x > p95]
+  
+  return(outliers)
+}
+
+remove_outliers <- function(x, func) {
+  outliers <- func(x)
+  return(x[!is.na(outliers)])
+}
+
+replace_outliers <- function(x, func) {
+  outliers <- func(x)
+  x[outliers] <- NA
+  return(x)
+}
+```
+
+Vamos a comprobar el funcionamiento de los métodos de detección de outliers. Lo aplicaremos sobre todas las variables numéricas.
+```{r}
+columnas_numericas <- names(datos)[sapply(datos, is.numeric)]
+
+m1 <- apply(datos[columnas_numericas], 2, tresSigma)
+m2 <- apply(datos[columnas_numericas], 2, hampel)
+m3 <- apply(datos[columnas_numericas], 2, boxplot)
+m4 <- apply(datos[columnas_numericas], 2, percentil)
+
+m1 <- sapply(sapply(m1, complete.cases),sum)
+m2 <- sapply(sapply(m2, complete.cases),sum)
+m3 <- sapply(sapply(m3, complete.cases),sum)
+m4 <- sapply(sapply(m4, complete.cases),sum)
+
+resultados <- data.frame(
+  Metodo = rep(c("3-Sigma", "Hampel", "Boxplot", "Percentil"), each = length(columnas_numericas)),
+  Columna = rep(columnas_numericas, times = 4),
+  Outliers_Detectados = c(m1, m2, m3, m4)
+)
+
+ggplot(resultados, aes(x = Columna, y = Outliers_Detectados, fill = Metodo)) +
+  geom_bar(stat = "identity", position = position_dodge()) +
+  labs(title = "Número de Outliers Detectados por Método",
+       x = "Columna Numérica",
+       y = "Número de Outliers Detectados") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
 
 
+Usaremos el metodo de Hampel, ya que por la naturaleza de los datos no podemos suponer los datos como una distribución Gaussiana.
+
+A continuación, reemplazaremos los outliers por NA.
+
+```{r}
+datos_no_outliers <- datos %>%
+  mutate_at(vars(all_of(columnas_numericas)), ~ replace_outliers(., hampel))
+```
 
 # Análisis de datos faltantes y especiales
 
@@ -142,7 +239,7 @@ variables_numericas <- colnames(datos[sapply(datos,is.numeric)])
 reemplazo_especiales <- function(x){
   return(ifelse(is.finite(x), x, NA))
 }
-datos <- mutate(datos, across(all_of(variables_numericas), reemplazo_especiales))
+datos <- mutate(datos_no_outliers, across(all_of(variables_numericas), reemplazo_especiales))
 ```
 
 A continuación vamos a calcular el porcentaje de NA's que tiene cada variable.
@@ -225,7 +322,7 @@ col_imputadas <- c("PM1","PM2.5","PM10","NO","NO2","NOx","O3","SO2","CO","Ruido"
 
 datos_limpios <- datos %>% 
   filter(Fecha >= as.Date('2012-01-01', format = '%Y-%m-%d'), Fecha <= as.Date('2022-01-01', format = '%Y-%m-%d')) %>%
-  select(-c('Pb_(ng/m3)','Cd_(ng/m3)','Ni_(ng/m3)','As_(ng/m3)','B(a)p_(ng/m3)','NH3','C7H8','C6H6','C8H10')) %>% 
+  select(-c('Pb','Cd','Ni','As','B(a)p','NH3','C7H8','C6H6','C8H10')) %>% 
   group_by(Fecha) %>% 
   mutate(across(.cols = all_of(col_imputadas), imputacion_NAs)) %>% 
   mutate(across(all_of(col_imputadas), reemplazo_especiales)) %>%
@@ -236,6 +333,36 @@ datos_limpios <- datos %>%
 datos_limpios <- datos_limpios[complete.cases(datos_limpios),]
 ```
 
+## Variables más y menos correlacionadas
+
+La correlación puede tener valores en el rango [-1,1]. Siendo -1 el indicador de un comportamiento absolutamente contrario y siendo 1 la misma variable, pues tiene exactamente el mismo comportamiento.
+
+A continuación, observaremos en orden descendente las correlaciones de variables superiores a 0'7. Además, también observaremos las correlaciones menores de 0'7 en orden descendente.
+
+Esto puede darnos información para reflexionar sobre la naturaleza y comportamiento de los datos.
+
+```{r}
+library(GGally)
+columnas_numericas_limpias <- setdiff(columnas_numericas,c('Pb','Cd','Ni','As','B(a)p','NH3','C7H8','C6H6','C8H10'))
+df <- cor(na.omit(datos_limpios[columnas_numericas_limpias])) %>%
+  as.data.frame(.)
+
+df$Variable1 <- rownames(df)
+
+cor <- df %>%
+  pivot_longer(cols = -Variable1, names_to = "Variable2", values_to = "Correlation")
+
+correlaciones <- cor[cor$Correlation > 0.7,] %>% arrange(desc(Correlation)) %>% filter(Variable1 != Variable2)
+correlaciones_inversas <- cor[cor$Correlation < -0.7,] %>% arrange(Correlation) %>% filter(Variable1 != Variable2)
+paste0("El numero total de correlaciones inversas es ",nrow(correlaciones_inversas),". Por lo tanto, solo estudiaremos las correlaciones directas")
+
+ggplot(correlaciones, aes(x = Variable1, y = Variable2, color = Correlation)) +
+  geom_tile(aes(fill = Correlation)) +
+  theme_minimal() +
+  labs(title = "Correlaciones Positivas")
+
+ggcorr(datos_limpios[columnas_numericas_limpias])
+```
 
 # Análisis univariante
 
