@@ -2,7 +2,9 @@
 title: "ProyectoAED2023"
 author: "Carlos, Diego, Miguel"
 date: "2023-11-02"
-output: html_document
+output:
+  html_document: default
+  pdf_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -21,7 +23,11 @@ Una vez preparado el dataset, procederemos a responder a las preguntas planteada
 
 # Objetivos
 
-El objetivo principal de este trabajo es familizarse con las herramientas y metodologías aprendidas para la carga, manipulación y análisis exploratorio de un conjunto de datos. Para ello se van a plantear una serie de objetivos es forma de preguntas que requerirán la aplicación de las herramientas y metodologías aprendidas:
+El objetivo principal de este trabajo es familizarse con las herramientas y metodologías aprendidas para la carga, manipulación y análisis exploratorio de un conjunto de datos. 
+
++ analisis univariante, bivariante, NA, outliers
+
+Para ello se van a plantear una serie de objetivos es forma de preguntas que requerirán la aplicación de las herramientas y metodologías aprendidas:
 
 + ¿?Influencia del cambio en el tráfico hacia el centro de la ciudad en los últimos años. (carriles bici) : Comprobar posible reducción de gases emitidos por vehículos a motor en las estaciones más céntricas.
 
@@ -44,12 +50,6 @@ A lo largo del desarrollo del proyecto se irán planteando y resolviendo las pre
 
 
 # Carga de librerías y datos
-
-[Explicar la estructura del dataset sin modificar]
-
-[Escoger variables para "calidad del aire"]
-
-
 
 ```{r}
 library(readr) # Carga de datos
@@ -100,7 +100,7 @@ unique(datos$Estacion)
 
 - *PM1, PM2.5, PM10* son variables de tipo numérico con datos sobre la concentración de materiales particuldos (OM) de menos de 1, 2.5 y 10 micrómetros de diámetro respectivamente.
 
-- *NO, NO2, NOx, O2, SO2, CO, NH3* son variables con datos sobre la concentración de estas moléculas inorgánicas consideradas contaminantes en el aire.
+- *NO, NO2, NOx, O2, SO2, CO, NH3* son variables con datos sobre la concentración de estas moléculas inorgánicas consideradas contaminantes en el aire. Respecto a los oxidos de nitrogeno (NOx), estos son un grupo de gases compuestos por oxigeno y nitrogeno, es decir, NO y NO2 forman parte de este grupo y por lo tanto los valores de las variables estarán altamente correlados.
 
 - *C7H8, C6H6, C8H10* son variables con datos sobre la concentración de estas moléculas orgánicas también consideradas contaminantes en el aire.
 
@@ -141,7 +141,7 @@ variables_numericas <- colnames(datos[sapply(datos,is.numeric)])
 reemplazo_especiales <- function(x){
   return(ifelse(is.finite(x), x, NA))
 }
-datos <- mutate(datos_no_outliers, across(all_of(variables_numericas), reemplazo_especiales))
+datos <- mutate(datos, across(all_of(variables_numericas), reemplazo_especiales))
 ```
 
 A continuación vamos a calcular el porcentaje de NA's que tiene cada variable.
@@ -217,7 +217,7 @@ En nuestro caso vamos a escoger un período de 10 años, desde 2012 a 2022, ya q
 
 # Análisis univariante
 
-En esta sección analizaremos las variables de forma individual con el objetivo de conocer sus magnitudes, es decir, las unidades de medida que representan, y como se distribuyen. Partiendo de las conclusiones obtenidas en el apartado anterior, nos parece interesante si existe una influencia en el valor de la variable por parte de la estación de la que proviene. En caso de no existir una influencia considerable podemos utilizar los valores obtenidos en otras estaciones para imputar otros. Finalmente comprobaremos si año influye en el valor de la variable, para ver si a lo largo del tiempo ha ocurrido algún cambio considerable.
+En esta sección analizaremos las variables de forma individual con el objetivo de conocer sus magnitudes, es decir, las unidades de medida que representan, y como se distribuyen. Como se ha mencionado previamente, escogemos los datos que comienzan en 2012, concretamente cunado se empiezan a tomar datos de la precipitación, y los datos previos a 2023, concretamente cuando se dejan de tomar los oxidos de nitrogeno.
 
 Variables de interés
   - Fecha
@@ -225,21 +225,37 @@ Variables de interés
   - Gases: NO, NO2, NOx, SO2, CO, O3 
   - Meteorológicas: Temperatura, Humedad, Presion, Velocidad viento, Direccion viento, Radiación solar, Precipitación
 
-Comenzamos con un summary para analizar las magnitudes de las variables y como se distribuyen los datos.
+Comenzamos con un summary de las variables numéricas para analizar las magnitudes de las variables y como se distribuyen los datos.
 
 ```{r}
 variables <- c("Fecha", "Estacion","NO", "NO2", "NOx", "SO2", "CO", "O3", "Temperatura", "Velocidad_del_viento", "Direccion_del_viento", "Humidad_relativa", "Presion", "Radiacion_solar", "Precipitacion")
-datos %>%
-  select(all_of(variables[-c(1:2)])) %>%
-  summary
-```
 
-# ```{r}
-# variables <- c("Fecha", "Estacion","NO", "NO2", "NOx", "SO2", "CO", "O3", "Temperatura", "Velocidad_del_viento", "Direccion_del_viento", "Humidad_relativa", "Presion", "Radiacion_solar", "Precipitacion")
-# datos_limpios %>%
-#   select(all_of(variables[-c(1:2)])) %>%
-#   summary
-# ```
+mystats <- function(x, na.omit=TRUE){
+                if (na.omit)
+                    x <- x[!is.na(x)]
+                min <- min(x)
+                Q1 <- quantile(x, 0.25)
+                median <- median(x)
+                mean <- mean(x)
+                dt <- sd(x)
+                Q3 <- quantile(x, 0.75)
+                max <- max(x)
+                
+                n <- length(x)
+                IQR <- IQR(x)
+                
+                return(round(c(min=min, Q1=Q1, median=median, mean=mean, dt=dt, Q3=Q3, max=max, n=n, IQR=IQR),2))
+} 
+
+precipitacion <- datos[,c('Fecha','Precipitacion')] %>% na.omit
+fecha_inicio <- precipitacion$Fecha[1]
+oxidos_n <- datos[,c('Fecha','NOx')] %>% na.omit
+fecha_fin <- oxidos_n$Fecha[nrow(oxidos_n)]
+
+datos <- datos[datos$Fecha > fecha_inicio & datos$Fecha < fecha_fin, variables]
+
+sapply(datos[-c(1,2)], mystats)
+```
 
 Mediante el summary anterior podemos averiguar cuales son las unidades de medida empleadas contrastando con información externa, ya que en la fuente de los datos no se proporcionan.
 
@@ -252,58 +268,30 @@ Mediante el summary anterior podemos averiguar cuales son las unidades de medida
   - Precipitación: litros de agua por metro cuadrado (mm)
   - Radiación solar: Vatios por metro cuadrado (W/m2)
 
-Mediante boxplots vamos a analizar como se distribuyen los datos respecto a las estaciones. En primer lugar los gases:
+
+Densidades:
 
 ```{r}
 # Gases
-datos %>%
-  select(all_of(variables[2:8])) %>%
+datos[2:8] %>%
   pivot_longer(cols = 2:7, names_to = 'Variables', values_to = 'valor', values_drop_na = T) %>%
-  ggplot(aes(y=valor, fill=Estacion)) + 
-  geom_boxplot(outlier.size = 1) +
-  facet_wrap(~Variables, scales = "free_y") + 
-  theme(axis.text.x = element_blank(), legend.position = "none")
+  ggplot(aes(x=valor)) + 
+  geom_histogram(aes(y=stat(density), fill='blue', alpha=0.6), bins=50) +
+  geom_density() +
+  facet_wrap(~Variables, scales = "free") + 
+  theme(legend.position = "none")
 ```
 
-En segundo lugar las variables meteorológicas:
-
 ```{r}
-# Variables meteorológicas
 # Gases
-datos %>%
-  select(all_of(variables[c(2,c(9:15))])) %>%
+datos[c(2,c(9:15))] %>%
   pivot_longer(cols = 2:8, names_to = 'Variables', values_to = 'valor', values_drop_na = T) %>%
-  ggplot(aes(y=valor, fill=Estacion)) + 
-  geom_boxplot(outlier.size = 1) +
-  facet_wrap(~Variables, scales = "free_y") + 
-  theme(axis.text.x = element_blank(), legend.position = "none")
+  ggplot(aes(x=valor)) + 
+  geom_histogram(aes(y=stat(density), fill='blue', alpha=0.6), bins=50) +
+  geom_density() +
+  facet_wrap(~Variables, scales = "free") + 
+  theme(legend.position = "none")
 ```
-
-```{r}
-# Gases
-datos %>%
-  select(all_of(variables[c(1,3:8)])) %>%
-  mutate(ano = factor(year(Fecha))) %>%
-  pivot_longer(cols = 2:7, names_to = 'Variables', values_to = 'valor', values_drop_na = T) %>%
-  ggplot(aes(y=valor, fill=ano)) + 
-  geom_boxplot(outlier.size = 1) +
-  facet_wrap(~Variables, scales = "free_y") + 
-  theme(axis.text.x = element_blank(), legend.position = "none")
-```
-
-```{r}
-# Gases
-datos %>%
-  select(all_of(variables[c(1,9:15)])) %>%
-  mutate(ano = factor(year(Fecha))) %>%
-  pivot_longer(cols = 2:8, names_to = 'Variables', values_to = 'valor', values_drop_na = T) %>%
-  ggplot(aes(y=valor, fill=ano)) + 
-  geom_boxplot(outlier.size = 1) +
-  facet_wrap(~Variables, scales = "free_y") + 
-  theme(axis.text.x = element_blank(), legend.position = "none")
-```
-
-Podemos concluir con que generalmente la estación no influye en los valores de las variables. Esta información no es útil para la imputación de NA's, ya que podemos emplear la media de las medidas obtenidas 
 
 
 # Detección y eliminación de outliers con métodos univariante
@@ -369,7 +357,7 @@ replace_outliers <- function(x, func) {
 
 Vamos a comprobar el funcionamiento de los métodos de detección de outliers. Lo aplicaremos sobre todas las variables numéricas.
 ```{r}
-columnas_numericas <- names(datos)[sapply(datos, is.numeric)]
+columnas_numericas <- names(datos)[3:15]
 
 m1 <- apply(datos[columnas_numericas], 2, tresSigma)
 m2 <- apply(datos[columnas_numericas], 2, hampel)
@@ -405,24 +393,86 @@ datos_no_outliers <- datos %>%
   mutate_at(vars(all_of(columnas_numericas)), ~ replace_outliers(., hampel))
 ```
 
+# Analisis bivariante
+
+Partiendo de las conclusiones obtenidas en el apartado de análisis de datos faltantes, nos parece interesante ver si existe alguna influencia en el valor de la variable por parte de la estación de la que proviene. En caso de no existir una influencia considerable podemos utilizar los valores obtenidos en otras estaciones para imputar otros. Finalmente comprobaremos si año influye en el valor de la variable, para ver si a lo largo del tiempo ha ocurrido algún cambio considerable.
+
+Mediante boxplots vamos a analizar como se distribuyen los datos respecto a las estaciones. En primer lugar los gases:
+
+```{r}
+# Gases
+datos_no_outliers %>%
+  select(all_of(variables[2:8])) %>%
+  pivot_longer(cols = 2:7, names_to = 'Variables', values_to = 'valor', values_drop_na = T) %>%
+  ggplot(aes(y=valor, fill=Estacion)) + 
+  geom_boxplot(outlier.size = 1) +
+  facet_wrap(~Variables, scales = "free_y") + 
+  theme(axis.text.x = element_blank(), legend.position = "none")
+```
+
+En segundo lugar las variables meteorológicas:
+
+```{r}
+# Variables meteorológicas
+# Gases
+datos_no_outliers %>%
+  select(all_of(variables[c(2,c(9:15))])) %>%
+  pivot_longer(cols = 2:8, names_to = 'Variables', values_to = 'valor', values_drop_na = T) %>%
+  ggplot(aes(y=valor, fill=Estacion)) + 
+  geom_boxplot(outlier.size = 1) +
+  facet_wrap(~Variables, scales = "free_y") + 
+  theme(axis.text.x = element_blank(), legend.position = "none")
+```
+
+Podemos concluir con que generalmente la estación no influye en los valores de las variables. Esta información nos es útil para la imputación de NA's, ya que podemos emplear la media de las medidas obtenidas por otras estaciones.
+
+Ahora vamos a ver una sencilla evolución mediante boxplots de el valor de las variables a lo largo de los años. Comenzamos con los gases:
+
+```{r}
+# Gases
+datos_no_outliers %>%
+  select(all_of(variables[c(1,3:8)])) %>%
+  mutate(ano = factor(year(Fecha))) %>%
+  pivot_longer(cols = 2:7, names_to = 'Variables', values_to = 'valor', values_drop_na = T) %>%
+  ggplot(aes(y=valor, fill=ano)) + 
+  geom_boxplot(outlier.size = 1) +
+  facet_wrap(~Variables, scales = "free_y") + 
+  theme(axis.text.x = element_blank(), legend.position = "none")
+```
+
+Se puede apreciar una leve reducción a lo largo de los años de los gases considerados como contaminantes a excepción del SO2 que parece mantenerse constante. Por otro lado vemos un leve aumento del ozono (O3), por lo que podría existir una relación con la disminución de gases contaminantes. Continuamos con las variables meteorológicas:
+
+```{r}
+# Gases
+datos_no_outliers %>%
+  select(all_of(variables[c(1,9:15)])) %>%
+  mutate(ano = factor(year(Fecha))) %>%
+  pivot_longer(cols = 2:8, names_to = 'Variables', values_to = 'valor', values_drop_na = T) %>%
+  ggplot(aes(y=valor, fill=ano)) + 
+  geom_boxplot(outlier.size = 1) +
+  facet_wrap(~Variables, scales = "free_y") + 
+  theme(axis.text.x = element_blank(), legend.position = "none")
+```
+
+Como era de esperar, las variables meteorológicas no han sufrido variaciones a lo largo de los años.
+
 
 # Imputación de NA's
 
-Centrándonos en el resto de variables, si bien son más consistentes en lo que se refiere a las entradas diarias de cada variable, todavía hay muchos datos faltantes. No obstante, podemos aprovechar el hecho de que los datos diarios de las variables en todas las estaciones de Valencia suelen ser muy parecidos, por lo que decidimos imputar los datos faltantes en cada día con la media de esta variable sobre todas las estaciones. Tras realizar esta imputación, todavía hay algunas variables que presentan NA's, esto se debe a que hay algunos días donde donde esta variable no se ha medido en ninguna de las estaciones. Esto sólo ocurre en el 11% de las observaciones, por lo que decidimos desprendernos de estas observaciones, ya que el volúmen de datos es suficientemente grande y los datos todavía pueden considerarse diarios.
+Centrándonos en las variables de interés, si bien son más consistentes en lo que se refiere a las entradas diarias de cada variable, todavía hay muchos datos faltantes. No obstante, podemos aprovechar el hecho de que los datos diarios de las variables en todas las estaciones de Valencia suelen ser muy parecidos, por lo que decidimos imputar los datos faltantes en cada día con la media de esta variable sobre todas las estaciones. Tras realizar esta imputación, todavía hay algunas variables que presentan NA's, esto se debe a que hay algunos días donde donde esta variable no se ha medido en ninguna de las estaciones. Esto sólo ocurre en el 11% de las observaciones, por lo que decidimos desprendernos de estas observaciones, ya que el volúmen de datos es suficientemente grande y los datos todavía pueden considerarse diarios.
 
 ```{r}
 imputacion_NAs <- function(x){
   ifelse(is.na(x), mean(x, na.rm = T), x)
 }
 
-col_imputadas <- c("PM1","PM2.5","PM10","NO","NO2","NOx","O3","SO2","CO","Ruido","Velocidad_del_viento","Direccion_del_viento","Temperatura","Humidad_relativa","Presion","Radiacion_solar","Precipitacion","Velocidad_maxima_del_viento")
-
-datos_limpios <- datos %>% 
-  filter(Fecha >= as.Date('2012-01-01', format = '%Y-%m-%d'), Fecha <= as.Date('2022-01-01', format = '%Y-%m-%d')) %>%
-  select(-c('Pb_(ng/m3)','Cd_(ng/m3)','Ni_(ng/m3)','As_(ng/m3)','B(a)p_(ng/m3)','NH3','C7H8','C6H6','C8H10')) %>% 
+datos_limpios <- datos_no_outliers %>% 
+  # Esta hecho arriba
+  #filter(Fecha >= as.Date('2012-01-01', format = '%Y-%m-%d'), Fecha <= as.Date('2022-01-01', format = '%Y-%m-%d')) %>%
+  #select(-c('Pb_(ng/m3)','Cd_(ng/m3)','Ni_(ng/m3)','As_(ng/m3)','B(a)p_(ng/m3)','NH3','C7H8','C6H6','C8H10')) %>% 
   group_by(Fecha) %>% 
-  mutate(across(.cols = all_of(col_imputadas), imputacion_NAs)) %>% 
-  mutate(across(all_of(col_imputadas), reemplazo_especiales)) %>%
+  mutate(across(.cols = all_of(columnas_numericas), imputacion_NAs)) %>% 
+  mutate(across(all_of(columnas_numericas), reemplazo_especiales)) %>%
   ungroup
 
 100*sum(complete.cases(datos_limpios))/nrow(datos_limpios)
@@ -430,31 +480,47 @@ datos_limpios <- datos %>%
 datos_limpios <- datos_limpios[complete.cases(datos_limpios),]
 ```
 
+# Analisis bivariante 2 (tras imputación de NA)
 
-# Analisis bivariante
+## Correlaciones
 
 ```{r, eval=FALSE}
 library(GGally)
-corr1 <- datos %>%
-  select(all_of(variables[3:15])) %>%
+
+# Correlacion Pearson
+corr1_P <- datos[3:15] %>%
   na.omit %>%
   cor
 
-corr2 <- datos_limpios %>%
-  select(all_of(variables[3:15])) %>%
+corr2_P <- datos_limpios[3:15] %>%
   na.omit %>%
   cor
+corr2_P
 
-diff <- abs(corr1-corr2)
-diff
+# Ver diferencias con data raw y data con NA imputados y sin outliers univariantes
+diff_P <- abs(corr1_P-corr2_P)
+diff_P
 
-ggcorr(datos %>%
-  select(all_of(variables[3:15])))
+# Correlacion Spearman
+corr1_S <- datos[3:15] %>%
+  na.omit %>%
+  cor(method = 'spearman')
 
-ggpairs(datos %>%
-  select(all_of(variables[3:15])))
+corr2_S <- datos_limpios[3:15] %>%
+  na.omit %>%
+  cor(method = 'spearman')
+corr2_S
+
+diff_S <- abs(corr1_S-corr2_S)
+diff_S
+
+ggcorr(datos_limpios[3:15])
+
+#ggpairs(datos_limpios[3:15])
 ```
 NOTA: correlación negativa NOs con Ozono (Cuando mas NOS menos Ozono...)
+NOTA: Mencionar lo dicho en la descripción del dataset sobre la correlación de NOx = (NO,NO2,...)
+NOTA: Temperatura y radiación solar
 
 
 ## Detección y eliminación de outliers con métodos multivariable
@@ -474,7 +540,7 @@ distancia_mahalanobis <- function(x) {
   return(outliers)
 }
 
-instancias_outliers <- distancia_mahalanobis(datos_limpios[col_imputadas])
+instancias_outliers <- distancia_mahalanobis(datos_limpios[columnas_numericas])
 paste0("La distancia de mahalanobis detecta como outliers ", length(instancias_outliers)," datos con una confianza del 95%. Con estos datos, lo que haremos no es cambiarlos por NA (pues miramos sobre instancias enteras), sino que directamente las eliminaremos.")
 
 datos_limpios_sin_outliers <- datos_limpios[-instancias_outliers,]
@@ -490,8 +556,8 @@ Esto puede darnos información para reflexionar sobre la naturaleza y comportami
 
 ```{r}
 library(GGally)
-columnas_numericas_limpias <- setdiff(columnas_numericas,c('Pb','Cd','Ni','As','B(a)p','NH3','C7H8','C6H6','C8H10'))
-df <- cor(na.omit(datos_limpios[columnas_numericas_limpias])) %>%
+#columnas_numericas_limpias <- setdiff(columnas_numericas,c('Pb','Cd','Ni','As','B(a)p','NH3','C7H8','C6H6','C8H10'))
+df <- cor(na.omit(datos_limpios[3:15])) %>%
   as.data.frame(.)
 
 df$Variable1 <- rownames(df)
@@ -508,7 +574,7 @@ ggplot(correlaciones, aes(x = Variable1, y = Variable2, color = Correlation)) +
   theme_minimal() +
   labs(title = "Correlaciones Positivas")
 
-ggcorr(datos_limpios[columnas_numericas_limpias])
+ggcorr(datos_limpios[3:15])
 ```
 
 
