@@ -116,7 +116,7 @@ unique(datos$Fecha_baja)
 
  *Fecha_creación* solo presenta dos entradas distintas y *Fecha_baja* sólo presenta NA's por lo que estas variables parecen prescindibles`
 
-Para evitar posibles problemas, renombramos las varianles con espacios en su nombre para trabajar sin comillas ' ' y cambiamos el superíndice de ³ (ng/m³) por un 3 normal.
+Para evitar posibles problemas, renombramos las varianles con espacios en su nombre para trabajar sin comillas ' ' y eliminamos el sufijo (ng/m³) de algunas variables
 
 ```{r}
 colnames(datos) <- gsub(x = colnames(datos), pattern=' ', replacement = '_')
@@ -129,11 +129,9 @@ datos <- datos %>% select(-c('Id', 'Dia_de_la_semana','Dia_del_mes','Fecha_creac
 ```
 
 
-
-
 # Análisis de datos faltantes y especiales
 
-En esta sección, previamente al análisis univariante y bivariante de las variables, vamos a realizar un análisis de la estructura del dataset. El dataset parece estar compuesto por la unión de un conjunto datasets, posiblemente por las distintas estaciones de las que provienen los datos. Con el objetivo de obtener un conjunto de datos consistente, analizaremos el porcentaje de NA's que hay por cada variable, luego veremos que datos proporcionan las estaciones y con que frecuencia, también comprobaremos cuando comenzaron a generar datos las estaciones y durante que periodos de tiempo se han obtenido las variables. Con esto determinaremos un periodo temporal y un conjunto de variables de interés consistente para el posterior análisis univariante y bivariante.
+En esta sección, previamente al análisis univariante y bivariante de las variables, vamos a realizar un análisis de la estructura del dataset. El dataset parece estar compuesto por la unión de un conjunto datasets, posiblemente por las distintas estaciones de las que provienen los datos. Con el objetivo de obtener un conjunto de datos consistente, analizaremos el porcentaje de NA's que hay por cada variable, luego veremos que datos proporcionan las estaciones y con que frecuencia, también comprobaremos cuando comenzaron a generar datos las estaciones y durante que periodos de tiempo se han obtenido las variables. 
 
 En primer lugar vamos reemplazar todos los posibles valores especiales (NULL, NaN, Inf...)  que pudieran haber en las varianles numéricas de nuestro dataset por NA's. De esta forma podemos tratar todos estos datos que no tienen sentido a la vez.
 
@@ -159,6 +157,8 @@ datos %>%
 ```
 
 Vemos como la variable B(a)p está casi vacía (sólo tiene una entrada) y hay varias variables con un porcentaje de NA's por encima del 90% y muchas otras por encima del 50%. Esto quizá sea debido a que algunas variables se empezaron a medir más tarde que otras o a que no en todas las estaciones se miden todas las variables.
+
+A continuación creamos un mapa de calor para comprobar que variables se miden en cada estación y con que frecuencia.
 
 ```{r}
 num_entradas <- function(x){
@@ -214,30 +214,10 @@ Tras esta primera visualización de nuestros datos, podemos concluir que la gran
 
 En nuestro caso vamos a escoger un período de 10 años, desde 2012 a 2022, ya que en este período de tiempo hay un número significativo de estaciones recogiendo datos y la mayoría de las variables son medidas en este intervalo de tiempo de forma consistente. No obstante, decidimos descartar las variables *Pb*, *Cd*, *Ni*, *As*, *B(a)p* y *NH3* debido a que se comienzan a medir después del 2012 y resultaría poco razonable imputar los datos de estas variables en esos años. De la misma forma, también descartamos las variables *C7H8*, *C6H6*, y *C8H10* debido a que presentan grandes períodos de tiempo con ausencia de datos intercalados entre 2012 y 2022, por lo que también sería poco razonable imputar estos datos. 
 
-Centrándonos en el resto de variables, si bien son más consistentes en lo que se refiere a las entradas diarias de cada variable, todavía hay muchos datos faltantes. No obstante, podemos aprovechar el hecho de que los datos diarios de las variables en todas las estaciones de Valencia suelen ser muy parecidos, por lo que decidimos imputar los datos faltantes en cada día con la media de esta variable sobre todas las estaciones. Tras realizar esta imputación, todavía hay algunas variables que presentan NA's, esto se debe a que hay algunos días donde donde esta variable no se ha medido en ninguna de las estaciones. Esto sólo ocurre en el 11% de las observaciones, por lo que decidimos desprendernos de estas observaciones, ya que el volúmen de datos es suficientemente grande y los datos todavía pueden considerarse diarios,
-
-```{r}
-imputacion_NAs <- function(x){
-  ifelse(is.na(x), mean(x, na.rm = T), x)
-}
-
-col_imputadas <- c("PM1","PM2.5","PM10","NO","NO2","NOx","O3","SO2","CO","Ruido","Velocidad_del_viento","Direccion_del_viento","Temperatura","Humidad_relativa","Presion","Radiacion_solar","Precipitacion","Velocidad_maxima_del_viento")
-
-datos_limpios <- datos %>% 
-  filter(Fecha >= as.Date('2012-01-01', format = '%Y-%m-%d'), Fecha <= as.Date('2022-01-01', format = '%Y-%m-%d')) %>%
-  select(-c('Pb_(ng/m3)','Cd_(ng/m3)','Ni_(ng/m3)','As_(ng/m3)','B(a)p_(ng/m3)','NH3','C7H8','C6H6','C8H10')) %>% 
-  group_by(Fecha) %>% 
-  mutate(across(.cols = all_of(col_imputadas), imputacion_NAs)) %>% 
-  mutate(across(all_of(col_imputadas), reemplazo_especiales)) %>%
-  ungroup
-
-100*sum(complete.cases(datos_limpios))/nrow(datos_limpios)
-
-datos_limpios <- datos_limpios[complete.cases(datos_limpios),]
-```
-
 
 # Análisis univariante
+
+En esta sección analizaremos las variables de forma individual con el objetivo de conocer sus magnitudes, es decir, las unidades de medida que representan, y como se distribuyen. Partiendo de las conclusiones obtenidas en el apartado anterior, nos parece interesante si existe una influencia en el valor de la variable por parte de la estación de la que proviene. En caso de no existir una influencia considerable podemos utilizar los valores obtenidos en otras estaciones para imputar otros. Finalmente comprobaremos si año influye en el valor de la variable, para ver si a lo largo del tiempo ha ocurrido algún cambio considerable.
 
 Variables de interés
   - Fecha
@@ -254,12 +234,12 @@ datos %>%
   summary
 ```
 
-```{r}
-variables <- c("Fecha", "Estacion","NO", "NO2", "NOx", "SO2", "CO", "O3", "Temperatura", "Velocidad_del_viento", "Direccion_del_viento", "Humidad_relativa", "Presion", "Radiacion_solar", "Precipitacion")
-datos_limpios %>%
-  select(all_of(variables[-c(1:2)])) %>%
-  summary
-```
+# ```{r}
+# variables <- c("Fecha", "Estacion","NO", "NO2", "NOx", "SO2", "CO", "O3", "Temperatura", "Velocidad_del_viento", "Direccion_del_viento", "Humidad_relativa", "Presion", "Radiacion_solar", "Precipitacion")
+# datos_limpios %>%
+#   select(all_of(variables[-c(1:2)])) %>%
+#   summary
+# ```
 
 Mediante el summary anterior podemos averiguar cuales son las unidades de medida empleadas contrastando con información externa, ya que en la fuente de los datos no se proporcionan.
 
@@ -299,7 +279,55 @@ datos %>%
   theme(axis.text.x = element_blank(), legend.position = "none")
 ```
 
-Podemos concluir con que generalmente la estación no influye en los valores de las variables. [...]
+```{r}
+# Gases
+datos %>%
+  select(all_of(variables[c(1,3:8)])) %>%
+  mutate(ano = factor(year(Fecha))) %>%
+  pivot_longer(cols = 2:7, names_to = 'Variables', values_to = 'valor', values_drop_na = T) %>%
+  ggplot(aes(y=valor, fill=ano)) + 
+  geom_boxplot(outlier.size = 1) +
+  facet_wrap(~Variables, scales = "free_y") + 
+  theme(axis.text.x = element_blank(), legend.position = "none")
+```
+
+```{r}
+# Gases
+datos %>%
+  select(all_of(variables[c(1,9:15)])) %>%
+  mutate(ano = factor(year(Fecha))) %>%
+  pivot_longer(cols = 2:8, names_to = 'Variables', values_to = 'valor', values_drop_na = T) %>%
+  ggplot(aes(y=valor, fill=ano)) + 
+  geom_boxplot(outlier.size = 1) +
+  facet_wrap(~Variables, scales = "free_y") + 
+  theme(axis.text.x = element_blank(), legend.position = "none")
+```
+
+Podemos concluir con que generalmente la estación no influye en los valores de las variables. Esta información no es útil para la imputación de NA's, ya que podemos emplear la media de las medidas obtenidas 
+
+# Imputación de NA's
+
+Centrándonos en el resto de variables, si bien son más consistentes en lo que se refiere a las entradas diarias de cada variable, todavía hay muchos datos faltantes. No obstante, podemos aprovechar el hecho de que los datos diarios de las variables en todas las estaciones de Valencia suelen ser muy parecidos, por lo que decidimos imputar los datos faltantes en cada día con la media de esta variable sobre todas las estaciones. Tras realizar esta imputación, todavía hay algunas variables que presentan NA's, esto se debe a que hay algunos días donde donde esta variable no se ha medido en ninguna de las estaciones. Esto sólo ocurre en el 11% de las observaciones, por lo que decidimos desprendernos de estas observaciones, ya que el volúmen de datos es suficientemente grande y los datos todavía pueden considerarse diarios.
+
+```{r}
+imputacion_NAs <- function(x){
+  ifelse(is.na(x), mean(x, na.rm = T), x)
+}
+
+col_imputadas <- c("PM1","PM2.5","PM10","NO","NO2","NOx","O3","SO2","CO","Ruido","Velocidad_del_viento","Direccion_del_viento","Temperatura","Humidad_relativa","Presion","Radiacion_solar","Precipitacion","Velocidad_maxima_del_viento")
+
+datos_limpios <- datos %>% 
+  filter(Fecha >= as.Date('2012-01-01', format = '%Y-%m-%d'), Fecha <= as.Date('2022-01-01', format = '%Y-%m-%d')) %>%
+  select(-c('Pb_(ng/m3)','Cd_(ng/m3)','Ni_(ng/m3)','As_(ng/m3)','B(a)p_(ng/m3)','NH3','C7H8','C6H6','C8H10')) %>% 
+  group_by(Fecha) %>% 
+  mutate(across(.cols = all_of(col_imputadas), imputacion_NAs)) %>% 
+  mutate(across(all_of(col_imputadas), reemplazo_especiales)) %>%
+  ungroup
+
+100*sum(complete.cases(datos_limpios))/nrow(datos_limpios)
+
+datos_limpios <- datos_limpios[complete.cases(datos_limpios),]
+```
 
 
 # Analisis bivariante
