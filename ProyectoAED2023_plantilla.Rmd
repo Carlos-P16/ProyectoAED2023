@@ -87,53 +87,97 @@ El primer paso es importar nuestro dataset. Para ello, en primer lugar abrimos (
 # Especificamos el tipo de columna para que los datos se importen directamente con un formato adecuado
 column_types <- cols(
   Fecha = col_date(format = "%Y-%m-%d"),
-  `Dia de la semana` = col_factor(levels = c("Lunes", "Martes",  "Miercoles", "Jueves", "Viernes", "Sabado", "Domingo")),
+  `Dia de la semana` = col_factor(
+    levels = c(
+      "Lunes",
+      "Martes",
+      "Miercoles",
+      "Jueves",
+      "Viernes",
+      "Sabado",
+      "Domingo"
+    )
+  ),
   `Dia del mes` = col_factor(levels = as.character(1:31)),
   Estacion = col_factor(),
-  `Fecha creacion`= col_date(format = "%Y-%m-%d"),
-  `Fecha baja`= col_date(format = "%Y-%m-%d"))
+  `Fecha creacion` = col_date(format = "%Y-%m-%d"),
+  `Fecha baja` = col_date(format = "%Y-%m-%d")
+)
 
 # importación del dataset
-datos <- read_delim("data/rvvcca.csv", delim = ";", escape_double = FALSE, trim_ws = TRUE, col_types = column_types)
+datos <-
+  read_delim(
+    "data/rvvcca.csv",
+    delim = ";",
+    escape_double = FALSE,
+    trim_ws = TRUE,
+    col_types = column_types
+  )
 head(datos)
 ```
 
 Para evitar posibles problemas, renombramos las varianles con espacios en su nombre para trabajar sin comillas ' ' y eliminamos el sufijo (ng/m³) que aparece en algunas variables
 
 ```{r}
-colnames(datos) <- gsub(x = colnames(datos), pattern=' ', replacement = '_')
-colnames(datos) <- gsub(x = colnames(datos), pattern='_[(]ng[/]m³[)]$', replacement = '')
+colnames(datos) <-
+  gsub(x = colnames(datos),
+       pattern = ' ',
+       replacement = '_')
+colnames(datos) <-
+  gsub(x = colnames(datos),
+       pattern = '_[(]ng[/]m³[)]$',
+       replacement = '')
 ```
 
 Para observar las características generales de nuestro dataset vamos a resumir en una tabla el tipo de cada variable *tyoe*, cuantos valores distintos tiene *levels*, su valor más frecuente *topLevel*, cuántas veces aparece *topCount*, y en qué proporción *topFreq* y por último la proporción de datos faltantes de cada variable *missFreq*:
 
 ```{r}
-levels <- function(x){
+levels <- function(x) {
   as.character(length(unique(x)))
 }
 
-topLevel <- function(x){
+topLevel <- function(x) {
   names(which.max(table(x)))
 }
 
-topCount <- function(x){
-  as.character(sum(as.character(x)==names(which.max(table(x))), na.rm = T))
+topCount <- function(x) {
+  as.character(sum(as.character(x) == names(which.max(table(
+    x
+  ))), na.rm = T))
 }
 
-topFrec <- function(x){
-  as.character(round(sum(as.character(x)==names(which.max(table(x))), na.rm = T)/length(x), digits = 3))
+topFrec <- function(x) {
+  as.character(round(sum(
+    as.character(x) == names(which.max(table(x))), na.rm = T
+  ) / length(x), digits = 3))
 }
 
-missFrec <- function(x){
-  as.character(round(sum(is.na(x))/length(x), digits=3))
+missFrec <- function(x) {
+  as.character(round(sum(is.na(x)) / length(x), digits = 3))
 }
 
-sumario <- list(type = ~class(.x), levels = ~levels(.x), topLevel = ~topLevel(.x), topCount = ~topCount(.x), topFrec = ~topFrec(.x), missFrec = ~missFrec(.x))
+sumario <-
+  list(
+    type = ~ class(.x),
+    levels = ~ levels(.x),
+    topLevel = ~ topLevel(.x),
+    topCount = ~ topCount(.x),
+    topFrec = ~ topFrec(.x),
+    missFrec = ~ missFrec(.x)
+  )
 
 datos %>%
-  summarise(across(.cols = all_of(colnames(datos)), .fns = sumario, .names = "{.col}-{.fn}")) %>% 
-  pivot_longer(cols = 1:203, names_to = 'variable_estadistica', values_to = 'valor') %>%
-  separate(variable_estadistica, into =  c('variable', 'estadistica'), sep = '-') %>%
+  summarise(across(
+    .cols = all_of(colnames(datos)),
+    .fns = sumario,
+    .names = "{.col}-{.fn}"
+  )) %>%
+  pivot_longer(cols = 1:203,
+               names_to = 'variable_estadistica',
+               values_to = 'valor') %>%
+  separate(variable_estadistica,
+           into =  c('variable', 'estadistica'),
+           sep = '-') %>%
   pivot_wider(names_from = 'estadistica', values_from = 'valor')
 ```
 
@@ -142,7 +186,7 @@ datos %>%
 - *Fecha* es una variable tipo *Date* que nos proporciona la fecha en la que se tomaron los datos que componen la observación. Tomaremos esta variable para la ordenación ascendente de los datos. Vemos que hay datos de casi 7000 días distintos y que el día con más datos (esto se corresponde a más estaciones distintas midiendo 12/13) es el 01-01-2022.
 
 ```{r}
-datos <- arrange(datos,datos$Fecha)
+datos <- arrange(datos, datos$Fecha)
 ```
 
 - *Dia_de_la_semana* y *Dia_del_mes* son variables de tipo factor que indican en que día de la semana y en qué día del mes se realiza la medida. Puede ser extraído a partir de *Fecha* usando las funciones _wday()_ y _day()_, de la librería _lubridate_. Vemos que el día de la semana más repetido es el Sábado y el del mes es el 31, sin embargo sus frecuecnias son prácticamente 1/7 y 1/30 por lo que parece indicar que todos los días de la semana y del mes están en la misma proporción. Esto estaría enconcordancia con el hecho de que tenemos datos realmente diarios.
@@ -169,7 +213,17 @@ unique(datos$Estacion)
 
 Vamos a mantener sólo las variables que aporten alguna información relevante:
 ```{r}
-datos <- datos %>% select(-c('Id', 'Dia_de_la_semana','Dia_del_mes','Fecha_creacion', 'Fecha_baja', 'B(a)p'))
+datos <-
+  datos %>% select(
+    -c(
+      'Id',
+      'Dia_de_la_semana',
+      'Dia_del_mes',
+      'Fecha_creacion',
+      'Fecha_baja',
+      'B(a)p'
+    )
+  )
 ```
 
 
@@ -180,24 +234,27 @@ En esta sección, previamente al análisis univariante y bivariante de las varia
 En primer lugar vamos reemplazar todos los posibles valores especiales (NULL, NaN, Inf...)  que pudieran haber en las varianles numéricas de nuestro dataset por NA's. De esta forma podemos tratar todos estos datos que no tienen sentido a la vez.
 
 ```{r}
-variables_numericas <- colnames(datos[sapply(datos,is.numeric)])
-reemplazo_especiales <- function(x){
+variables_numericas <- colnames(datos[sapply(datos, is.numeric)])
+reemplazo_especiales <- function(x) {
   return(ifelse(is.finite(x), x, NA))
 }
-datos <- mutate(datos, across(all_of(variables_numericas), reemplazo_especiales))
+datos <-
+  mutate(datos, across(all_of(variables_numericas), reemplazo_especiales))
 ```
 
 Ya hemos visto que nuestras variables numéricas tienen un alto porcentaje de NA's:
 
 ```{r}
-porc_na <- function(x){
-  100*sum(is.na(x))/length(x)
+porc_na <- function(x) {
+  100 * sum(is.na(x)) / length(x)
 }
-datos %>% 
-  summarise(across(.cols = all_of(colnames(datos)), .fns = porc_na)) %>% 
-  pivot_longer(cols = all_of(colnames(datos)), names_to = 'Variable', values_to = "Porcentaje NA's") %>%
-  arrange(desc(`Porcentaje NA's`)) %>% 
-  mutate(`Porcentaje NA's`=round(`Porcentaje NA's`, digits = 2))
+datos %>%
+  summarise(across(.cols = all_of(colnames(datos)), .fns = porc_na)) %>%
+  pivot_longer(cols = all_of(colnames(datos)),
+               names_to = 'Variable',
+               values_to = "Porcentaje NA's") %>%
+  arrange(desc(`Porcentaje NA's`)) %>%
+  mutate(`Porcentaje NA's` = round(`Porcentaje NA's`, digits = 2))
 ```
 
 Como ya hemos comentado, pensamos que el elevado número de datos faltantes puede deberse a que algunas variables se miden en peródos de tiempo diferentes a las demás o a que no en todas las estaciones se miden todas las variables. Al unir los datos de las distintas estaciones por la fecha, se habrían dado lugar los NA's. Para comprobar esta teoría vamos a realizar una serie de representacions gráficas exploratorias.
@@ -205,20 +262,26 @@ Como ya hemos comentado, pensamos que el elevado número de datos faltantes pued
 En primer lugar, creamos un mapa de calor para comprobar cuáles son las variables que mide cada estación y cuántos datos de dicha variable aporta cada estación.
 
 ```{r}
-num_entradas <- function(x){
+num_entradas <- function(x) {
   sum(!is.na(x))
 }
-est_var <- datos %>% 
-  group_by(Estacion) %>% 
-  summarise(across(.cols = all_of(variables_numericas), .fns = num_entradas)) %>% 
-  pivot_longer(cols = all_of(variables_numericas), names_to = 'Variable', values_to = "Numero_entradas") %>%
-  mutate(Variable = factor(Variable, levels = variables_numericas, ordered = T)) %>% 
+est_var <- datos %>%
+  group_by(Estacion) %>%
+  summarise(across(.cols = all_of(variables_numericas), .fns = num_entradas)) %>%
+  pivot_longer(
+    cols = all_of(variables_numericas),
+    names_to = 'Variable',
+    values_to = "Numero_entradas"
+  ) %>%
+  mutate(Variable = factor(Variable, levels = variables_numericas, ordered = T)) %>%
   arrange(match(Variable, variables_numericas))
 
-p <- ggplot(data = est_var, aes(x = Estacion, y=Variable, fill = Numero_entradas)) + 
-  geom_tile() + scale_fill_gradient(low = "white", high = "blue") + 
-  theme(axis.text.x=element_text(angle=45, hjust=1))
+p <-
+  ggplot(data = est_var, aes(x = Estacion, y = Variable, fill = Numero_entradas)) +
+  geom_tile() + scale_fill_gradient(low = "white", high = "blue") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
+show(p)
 #plotly::ggplotly(p)
 ```
 
@@ -227,12 +290,12 @@ En este mapa de calor podemos ver qué variables mide cada estación meteorológ
 Ahora queremos ver qué estaciones han estado activas a lo largo de los años:
 
 ```{r}
-datos %>% 
-  mutate(ano = factor(year(Fecha))) %>% 
-  ggplot(aes(x=ano, fill = Estacion)) + 
-  geom_bar() + 
-  labs(x = 'Año') + 
-  theme(axis.text.x=element_text(angle=45, hjust=1))
+datos %>%
+  mutate(ano = factor(year(Fecha))) %>%
+  ggplot(aes(x = ano, fill = Estacion)) +
+  geom_bar() +
+  labs(x = 'Año') +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
 ```
 
 Como podemos ver, desde 2004 hasta 2007 sólo tenemos datos de las estaciones de Pista de Silla y Viveros, que se mantienen actvas hasta 2022. Posteriormente, en los siguientes 5 años (2008-2012) se van añadiendo datos de otras estaciones como la del Politécnico, Av. de Francia, Molí del Sol, Boulevard Sur, Valencia Centro y Conselleria a razón casi de una nueva estación al año y que se mantienen hasta el final (2022). Desde 2013 hasta 2016 se siguen viendo las mismas estaciones y en los siguientes dos años (2017-2018) se añaden datos de la estación del Puerto de Valencia, de la que posteriormente dejamos de obtener datos. Finalmente, desde 2019 hasta 2022 se van añadiendo progresivamente cada año las estaciones de Nazaret, Puerto Molí Trans. Ponent, Puerto antic Turia y Valencia Olivereta. 2022 es el año donde tenemos datos de más estaciones distintas.
@@ -240,15 +303,24 @@ Como podemos ver, desde 2004 hasta 2007 sólo tenemos datos de las estaciones de
 A continuación queremos visualizar el período de tiempo entre la primera y la última medida de cada variable
 
 ```{r}
-datos %>% 
-  pivot_longer(cols = all_of(variables_numericas), names_to = 'Variables', values_to = 'valor', values_drop_na = T) %>% 
-  mutate(Variables = factor(Variables, levels = variables_numericas, ordered = T)) %>% 
-  ggplot(aes(x=Fecha, y=valor, color = Variables)) + 
-  geom_line() + 
-  facet_wrap(Variables~., scales = "free_y") + 
-  theme(legend.position = "none") + 
-  theme(axis.text.x=element_text(angle=45, hjust=1), axis.text.y = element_blank(), axis.ticks.y = element_blank()) + 
-  labs(y = '') + 
+datos %>%
+  pivot_longer(
+    cols = all_of(variables_numericas),
+    names_to = 'Variables',
+    values_to = 'valor',
+    values_drop_na = T
+  ) %>%
+  mutate(Variables = factor(Variables, levels = variables_numericas, ordered = T)) %>%
+  ggplot(aes(x = Fecha, y = valor, color = Variables)) +
+  geom_line() +
+  facet_wrap(Variables ~ ., scales = "free_y") +
+  theme(legend.position = "none") +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    axis.text.y = element_blank(),
+    axis.ticks.y = element_blank()
+  ) +
+  labs(y = '') +
   scale_colour_manual(values = rainbow(26)) 
 ```
 
@@ -272,33 +344,66 @@ Variables de interés
 Comenzamos con un summary de las variables numéricas para analizar las magnitudes de las variables y como se distribuyen los datos.
 
 ```{r}
-variables <- c("Fecha", "Estacion","NO", "NO2", "NOx", "SO2", "CO", "O3", "Temperatura", "Velocidad_del_viento", "Direccion_del_viento", "Humidad_relativa", "Presion", "Radiacion_solar", "Precipitacion","Ruido")
+variables <-
+  c(
+    "Fecha",
+    "Estacion",
+    "NO",
+    "NO2",
+    "NOx",
+    "SO2",
+    "CO",
+    "O3",
+    "Temperatura",
+    "Velocidad_del_viento",
+    "Direccion_del_viento",
+    "Humidad_relativa",
+    "Presion",
+    "Radiacion_solar",
+    "Precipitacion",
+    "Ruido"
+  )
 
-mystats <- function(x, na.omit=TRUE){
-                if (na.omit)
-                    x <- x[!is.na(x)]
-                min <- min(x)
-                Q1 <- quantile(x, 0.25)
-                median <- median(x)
-                mean <- mean(x)
-                dt <- sd(x)
-                Q3 <- quantile(x, 0.75)
-                max <- max(x)
-                
-                n <- length(x)
-                IQR <- IQR(x)
-                
-                return(round(c(min=min, Q1=Q1, median=median, mean=mean, dt=dt, Q3=Q3, max=max, n=n, IQR=IQR),2))
-} 
+mystats <- function(x, na.omit = TRUE) {
+  if (na.omit)
+    x <- x[!is.na(x)]
+  min <- min(x)
+  Q1 <- quantile(x, 0.25)
+  median <- median(x)
+  mean <- mean(x)
+  dt <- sd(x)
+  Q3 <- quantile(x, 0.75)
+  max <- max(x)
+  
+  n <- length(x)
+  IQR <- IQR(x)
+  
+  return(round(
+    c(
+      min = min,
+      Q1 = Q1,
+      median = median,
+      mean = mean,
+      dt = dt,
+      Q3 = Q3,
+      max = max,
+      n = n,
+      IQR = IQR
+    ),
+    2
+  ))
+}
 
-precipitacion <- datos[,c('Fecha','Precipitacion')] %>% na.omit
+precipitacion <- datos[, c('Fecha', 'Precipitacion')] %>% na.omit
 fecha_inicio <- precipitacion$Fecha[1]
-oxidos_n <- datos[,c('Fecha','NOx')] %>% na.omit
+oxidos_n <- datos[, c('Fecha', 'NOx')] %>% na.omit
 fecha_fin <- oxidos_n$Fecha[nrow(oxidos_n)]
 
-datos <- datos[datos$Fecha > fecha_inicio & datos$Fecha < fecha_fin, variables]
+datos <-
+  datos[datos$Fecha > fecha_inicio &
+          datos$Fecha < fecha_fin, variables]
 
-sapply(datos[-c(1,2)], mystats)
+sapply(datos[-c(1, 2)], mystats)
 ```
 
 Mediante el summary anterior podemos averiguar cuales son las unidades de medida empleadas contrastando con información externa, ya que en la fuente de los datos no se proporcionan.
@@ -319,22 +424,40 @@ Densidades:
 ```{r}
 # Gases
 datos[2:8] %>%
-  pivot_longer(cols = 2:7, names_to = 'Variables', values_to = 'valor', values_drop_na = T) %>%
-  ggplot(aes(x=valor)) + 
-  geom_histogram(aes(y=stat(density), fill='blue', alpha=0.6), bins=50) +
+  pivot_longer(
+    cols = 2:7,
+    names_to = 'Variables',
+    values_to = 'valor',
+    values_drop_na = T
+  ) %>%
+  ggplot(aes(x = valor)) +
+  geom_histogram(aes(
+    y = stat(density),
+    fill = 'blue',
+    alpha = 0.6
+  ), bins = 50) +
   geom_density() +
-  facet_wrap(~Variables, scales = "free") + 
+  facet_wrap( ~ Variables, scales = "free") +
   theme(legend.position = "none")
 ```
 
 ```{r}
 # Meteorológicas y Ruido
-datos[c(2,c(9:16))] %>%
-  pivot_longer(cols = 2:9, names_to = 'Variables', values_to = 'valor', values_drop_na = T) %>%
-  ggplot(aes(x=valor)) + 
-  geom_histogram(aes(y=stat(density), fill='blue', alpha=0.6), bins=50) +
+datos[c(2, c(9:16))] %>%
+  pivot_longer(
+    cols = 2:9,
+    names_to = 'Variables',
+    values_to = 'valor',
+    values_drop_na = T
+  ) %>%
+  ggplot(aes(x = valor)) +
+  geom_histogram(aes(
+    y = stat(density),
+    fill = 'blue',
+    alpha = 0.6
+  ), bins = 50) +
   geom_density() +
-  facet_wrap(~Variables, scales = "free") + 
+  facet_wrap( ~ Variables, scales = "free") +
   theme(legend.position = "none")
 ```
 
@@ -344,9 +467,9 @@ datos[c(2,c(9:16))] %>%
 A continuación, procederemos a detectar y eliminar outliers. Primero, comenzaremos definiendo diferentes funciones posibles para aplicar la detección de estos. Todas estas funciones corresponden a métodos univariantes.
 
 ```{r}
-tresSigma <- function(x){
-  media <- mean(x,na.rm=TRUE)
-  desviacion <- sd(x,na.rm=TRUE)
+tresSigma <- function(x) {
+  media <- mean(x, na.rm = TRUE)
+  desviacion <- sd(x, na.rm = TRUE)
   lim_low <- media - 3 * desviacion
   lim_upp <- media + 3 * desviacion
   
@@ -355,17 +478,17 @@ tresSigma <- function(x){
   return(outliers)
 }
 
-hampel <- function(x){
+hampel <- function(x) {
   mediana <- median(x, na.rm = TRUE)
   madm <- mad(x, constant = 1.4826, na.rm = TRUE)
   umbral <- 3 * madm
   
-  outliers <- x[abs(x-mediana) > umbral]
+  outliers <- x[abs(x - mediana) > umbral]
   
   return(outliers)
 }
 
-boxplot <- function(x){
+boxplot <- function(x) {
   q1 <- quantile(x, 0.25, na.rm = TRUE)
   q3 <- quantile(x, 0.75, na.rm = TRUE)
   
@@ -379,7 +502,7 @@ boxplot <- function(x){
   return(outliers)
 }
 
-percentil <- function(x){
+percentil <- function(x) {
   p5 <- quantile(x, 0.05, na.rm = TRUE)
   p95 <- quantile(x, 0.95, na.rm = TRUE)
   
@@ -409,18 +532,22 @@ m2 <- apply(datos[columnas_numericas], 2, hampel)
 m3 <- apply(datos[columnas_numericas], 2, boxplot)
 m4 <- apply(datos[columnas_numericas], 2, percentil)
 
-m1 <- sapply(sapply(m1, complete.cases),sum)
-m2 <- sapply(sapply(m2, complete.cases),sum)
-m3 <- sapply(sapply(m3, complete.cases),sum)
-m4 <- sapply(sapply(m4, complete.cases),sum)
+m1 <- sapply(sapply(m1, complete.cases), sum)
+m2 <- sapply(sapply(m2, complete.cases), sum)
+m3 <- sapply(sapply(m3, complete.cases), sum)
+m4 <- sapply(sapply(m4, complete.cases), sum)
 
 resultados <- data.frame(
-  Metodo = rep(c("3-Sigma", "Hampel", "Boxplot", "Percentil"), each = length(columnas_numericas)),
+  Metodo = rep(
+    c("3-Sigma", "Hampel", "Boxplot", "Percentil"),
+    each = length(columnas_numericas)
+  ),
   Columna = rep(columnas_numericas, times = 4),
   Outliers_Detectados = c(m1, m2, m3, m4)
 )
 
-ggplot(resultados, aes(x = Columna, y = Outliers_Detectados, fill = Metodo)) +
+ggplot(resultados,
+       aes(x = Columna, y = Outliers_Detectados, fill = Metodo)) +
   geom_bar(stat = "identity", position = position_dodge()) +
   labs(title = "Número de Outliers Detectados por Método",
        x = "Columna Numérica",
@@ -454,10 +581,15 @@ Mediante boxplots vamos a analizar como se distribuyen los datos respecto a las 
 # Gases
 datos_no_outliers %>%
   select(all_of(variables[2:8])) %>%
-  pivot_longer(cols = 2:7, names_to = 'Variables', values_to = 'valor', values_drop_na = T) %>%
-  ggplot(aes(y=valor, fill=Estacion)) + 
+  pivot_longer(
+    cols = 2:7,
+    names_to = 'Variables',
+    values_to = 'valor',
+    values_drop_na = T
+  ) %>%
+  ggplot(aes(y = valor, fill = Estacion)) +
   geom_boxplot(outlier.size = 1) +
-  facet_wrap(~Variables, scales = "free_y") + 
+  facet_wrap( ~ Variables, scales = "free_y") +
   theme(axis.text.x = element_blank(), legend.position = "none")
 ```
 
@@ -466,11 +598,16 @@ En segundo lugar las variables meteorológicas:
 ```{r}
 # Variables meteorológicas y ruido
 datos_no_outliers %>%
-  select(all_of(variables[c(2,c(9:16))])) %>%
-  pivot_longer(cols = 2:9, names_to = 'Variables', values_to = 'valor', values_drop_na = T) %>%
-  ggplot(aes(y=valor, fill=Estacion)) + 
+  select(all_of(variables[c(2, c(9:16))])) %>%
+  pivot_longer(
+    cols = 2:9,
+    names_to = 'Variables',
+    values_to = 'valor',
+    values_drop_na = T
+  ) %>%
+  ggplot(aes(y = valor, fill = Estacion)) +
   geom_boxplot(outlier.size = 1) +
-  facet_wrap(~Variables, scales = "free_y") + 
+  facet_wrap( ~ Variables, scales = "free_y") +
   theme(axis.text.x = element_blank(), legend.position = "none")
 ```
 
@@ -481,12 +618,17 @@ Ahora vamos a ver una sencilla evolución mediante boxplots de el valor de las v
 ```{r}
 # Gases
 datos_no_outliers %>%
-  select(all_of(variables[c(1,3:8)])) %>%
+  select(all_of(variables[c(1, 3:8)])) %>%
   mutate(ano = factor(year(Fecha))) %>%
-  pivot_longer(cols = 2:7, names_to = 'Variables', values_to = 'valor', values_drop_na = T) %>%
-  ggplot(aes(y=valor, fill=ano)) + 
+  pivot_longer(
+    cols = 2:7,
+    names_to = 'Variables',
+    values_to = 'valor',
+    values_drop_na = T
+  ) %>%
+  ggplot(aes(y = valor, fill = ano)) +
   geom_boxplot(outlier.size = 1) +
-  facet_wrap(~Variables, scales = "free_y") + 
+  facet_wrap( ~ Variables, scales = "free_y") +
   theme(axis.text.x = element_blank(), legend.position = "none")
 ```
 
@@ -495,12 +637,17 @@ Se puede apreciar una leve reducción a lo largo de los años de los gases consi
 ```{r}
 # Gases
 datos_no_outliers %>%
-  select(all_of(variables[c(1,9:16)])) %>%
+  select(all_of(variables[c(1, 9:16)])) %>%
   mutate(ano = factor(year(Fecha))) %>%
-  pivot_longer(cols = 2:9, names_to = 'Variables', values_to = 'valor', values_drop_na = T) %>%
-  ggplot(aes(y=valor, fill=ano)) + 
+  pivot_longer(
+    cols = 2:9,
+    names_to = 'Variables',
+    values_to = 'valor',
+    values_drop_na = T
+  ) %>%
+  ggplot(aes(y = valor, fill = ano)) +
   geom_boxplot(outlier.size = 1) +
-  facet_wrap(~Variables, scales = "free_y") + 
+  facet_wrap( ~ Variables, scales = "free_y") +
   theme(axis.text.x = element_blank(), legend.position = "none")
 ```
 
@@ -512,22 +659,22 @@ Como era de esperar, las variables meteorológicas no han sufrido variaciones a 
 Centrándonos en las variables de interés, si bien son más consistentes en lo que se refiere a las entradas diarias de cada variable, todavía hay muchos datos faltantes. No obstante, podemos aprovechar el hecho de que los datos diarios de las variables en todas las estaciones de Valencia suelen ser muy parecidos, por lo que decidimos imputar los datos faltantes en cada día con la media de esta variable sobre todas las estaciones. Tras realizar esta imputación, todavía hay algunas variables que presentan NA's, esto se debe a que hay algunos días donde donde esta variable no se ha medido en ninguna de las estaciones. Esto sólo ocurre en el 11% de las observaciones, por lo que decidimos desprendernos de estas observaciones, ya que el volúmen de datos es suficientemente grande y los datos todavía pueden considerarse diarios.
 
 ```{r}
-imputacion_NAs <- function(x){
+imputacion_NAs <- function(x) {
   ifelse(is.na(x), mean(x, na.rm = T), x)
 }
 
-datos_limpios <- datos_no_outliers %>% 
+datos_limpios <- datos_no_outliers %>%
   # Esta hecho arriba
   #filter(Fecha >= as.Date('2012-01-01', format = '%Y-%m-%d'), Fecha <= as.Date('2022-01-01', format = '%Y-%m-%d')) %>%
-  #select(-c('Pb_(ng/m3)','Cd_(ng/m3)','Ni_(ng/m3)','As_(ng/m3)','B(a)p_(ng/m3)','NH3','C7H8','C6H6','C8H10')) %>% 
-  group_by(Fecha) %>% 
-  mutate(across(.cols = all_of(columnas_numericas), imputacion_NAs)) %>% 
+  #select(-c('Pb_(ng/m3)','Cd_(ng/m3)','Ni_(ng/m3)','As_(ng/m3)','B(a)p_(ng/m3)','NH3','C7H8','C6H6','C8H10')) %>%
+  group_by(Fecha) %>%
+  mutate(across(.cols = all_of(columnas_numericas), imputacion_NAs)) %>%
   mutate(across(all_of(columnas_numericas), reemplazo_especiales)) %>%
   ungroup
 
-100*sum(complete.cases(datos_limpios))/nrow(datos_limpios)
+100 * sum(complete.cases(datos_limpios)) / nrow(datos_limpios)
 
-datos_limpios <- datos_limpios[complete.cases(datos_limpios),]
+datos_limpios <- datos_limpios[complete.cases(datos_limpios), ]
 ```
 ## Correlaciones
 
@@ -539,31 +686,16 @@ Esto puede darnos información para reflexionar sobre la naturaleza y comportami
 library(GGally)
 
 # Correlacion Pearson
-corr1_P <- datos[3:15] %>%
+corr_P <- datos_limpios[3:15] %>%
   na.omit %>%
   cor
-
-corr2_P <- datos_limpios[3:15] %>%
-  na.omit %>%
-  cor
-corr2_P
-
-# Ver diferencias con data raw y data con NA imputados y sin outliers univariantes
-diff_P <- abs(corr1_P-corr2_P)
-diff_P
+corr_P
 
 # Correlacion Spearman
-corr1_S <- datos[3:15] %>%
+corr_S <- datos_limpios[3:15] %>%
   na.omit %>%
   cor(method = 'spearman')
-
-corr2_S <- datos_limpios[3:15] %>%
-  na.omit %>%
-  cor(method = 'spearman')
-corr2_S
-
-diff_S <- abs(corr1_S-corr2_S)
-diff_S
+corr_S
 
 ggcorr(datos_limpios[3:15])
 ```
@@ -587,13 +719,22 @@ df <- cor(na.omit(datos_limpios[3:15])) %>%
 df$Variable1 <- rownames(df)
 
 cor <- df %>%
-  pivot_longer(cols = -Variable1, names_to = "Variable2", values_to = "Correlation")
+  pivot_longer(cols = -Variable1,
+               names_to = "Variable2",
+               values_to = "Correlation")
 
-correlaciones <- cor[cor$Correlation > 0.7,] %>% arrange(desc(Correlation)) %>% filter(Variable1 != Variable2)
-correlaciones_inversas <- cor[cor$Correlation < -0.7,] %>% arrange(Correlation) %>% filter(Variable1 != Variable2)
-paste0("El numero total de correlaciones inversas es ",nrow(correlaciones_inversas),". Por lo tanto, solo estudiaremos las correlaciones directas")
+correlaciones <-
+  cor[cor$Correlation > 0.7, ] %>% arrange(desc(Correlation)) %>% filter(Variable1 != Variable2)
+correlaciones_inversas <-
+  cor[cor$Correlation < -0.7, ] %>% arrange(Correlation) %>% filter(Variable1 != Variable2)
+paste0(
+  "El numero total de correlaciones inversas es ",
+  nrow(correlaciones_inversas),
+  ". Por lo tanto, solo estudiaremos las correlaciones directas"
+)
 
-ggplot(correlaciones, aes(x = Variable1, y = Variable2, color = Correlation)) +
+ggplot(correlaciones,
+       aes(x = Variable1, y = Variable2, color = Correlation)) +
   geom_tile(aes(fill = Correlation)) +
   theme_minimal() +
   labs(title = "Correlaciones Positivas")
@@ -608,18 +749,23 @@ distancia_mahalanobis <- function(x) {
   media = colMeans(x)
   S = cov(x)
   
-  dist = mahalanobis(x,media,S)
+  dist = mahalanobis(x, media, S)
   umbral <- qchisq(0.95, df = ncol(x))
-
+  
   outliers <- which(dist > umbral)
   
   return(outliers)
 }
 
-instancias_outliers <- distancia_mahalanobis(datos_limpios[columnas_numericas])
-paste0("La distancia de mahalanobis detecta como outliers ", length(instancias_outliers)," datos con una confianza del 95%. Con estos datos, lo que haremos no es cambiarlos por NA (pues miramos sobre instancias enteras), sino que directamente las eliminaremos.")
+instancias_outliers <-
+  distancia_mahalanobis(datos_limpios[columnas_numericas])
+paste0(
+  "La distancia de mahalanobis detecta como outliers ",
+  length(instancias_outliers),
+  " datos con una confianza del 95%. Con estos datos, lo que haremos no es cambiarlos por NA (pues miramos sobre instancias enteras), sino que directamente las eliminaremos."
+)
 
-datos_limpios_sin_outliers <- datos_limpios[-instancias_outliers,]
+datos_limpios_sin_outliers <- datos_limpios[-instancias_outliers, ]
 ```
 
 # Resolución de preguntas planteadas sobre los datos
@@ -641,26 +787,44 @@ Además, las estaciones deberían ser las más céntricas, ya que ahí el efecto
 
 
 ```{r}
-datos_mensuales <- datos[c("Fecha","SO2","NO2","Estacion")] %>%
-  filter(Estacion %in% c("Avda. Francia","Bulevard Sud", "Valencia Centro", "Olivereta")) %>%
+datos_mensuales <- datos[c("Fecha", "SO2", "NO2", "Estacion")] %>%
+  filter(Estacion %in% c("Avda. Francia", "Bulevard Sud", "Valencia Centro", "Olivereta")) %>%
   mutate(ano = year(Fecha), mes = month(Fecha)) %>%
   arrange(Fecha) %>%
   group_by(ano, mes) %>%
-  summarise(media_SO2 = mean(SO2, na.rm=TRUE), media_NO2 = mean(NO2,na.rm=TRUE), .groups="drop")
+  summarise(
+    media_SO2 = mean(SO2, na.rm = TRUE),
+    media_NO2 = mean(NO2, na.rm = TRUE),
+    .groups = "drop"
+  )
 
-ggplot(data = datos_mensuales, aes(x = mes, y = media_SO2, group = ano, color = factor(ano))) +
+ggplot(data = datos_mensuales, aes(
+  x = mes,
+  y = media_SO2,
+  group = ano,
+  color = factor(ano)
+)) +
   geom_line() +
   labs(x = "Mes", y = "Media SO2", title = "Media Mensual SO2 por Año") +
   scale_color_discrete(name = "Año") +
-  scale_x_continuous(breaks = 1:12, labels = month.abb, limits = c(1, 12)) +
+  scale_x_continuous(breaks = 1:12,
+                     labels = month.abb,
+                     limits = c(1, 12)) +
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
-ggplot(data = datos_mensuales, aes(x = mes, y = media_NO2, group = ano, color = factor(ano))) +
+ggplot(data = datos_mensuales, aes(
+  x = mes,
+  y = media_NO2,
+  group = ano,
+  color = factor(ano)
+)) +
   geom_line() +
   labs(x = "Mes", y = "Media NO2", title = "Media Mensual NO2 por Año") +
   scale_color_discrete(name = "Año") +
-  scale_x_continuous(breaks = 1:12, labels = month.abb, limits = c(1, 12)) +
+  scale_x_continuous(breaks = 1:12,
+                     labels = month.abb,
+                     limits = c(1, 12)) +
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 ```
@@ -676,21 +840,25 @@ Respecto al NO2 si que se puede apreciar una reducción a lo largo de los años.
 Aqui observamos si, en general la calidad del aire se ve influenciada por el día de la semana. Queremos sobre todo fijarnos en la distinción entre días laborables y de descanso. Podemos comprobar cómo, efectivamente, existe una disminución en los gases contaminantes los días festivos con respecto a los días laborables.
 
 ```{r}
-gases_interes <- c("NO","NO2","NOx","SO2","CO")
+gases_interes <- c("NO", "NO2", "NOx", "SO2", "CO")
 
 datos_semanales <- datos_limpios %>%
   mutate(Dia_de_la_semana = factor(wday(Fecha))) %>%
-  filter(!(Dia_de_la_semana %in% c(1,6))) %>%
+  filter(!(Dia_de_la_semana %in% c(1, 6))) %>%
   select(gases_interes) %>%
   summarise_all(.funs = list(mean)) %>%
-  pivot_longer(cols=everything(),names_to = "Gas",values_to="Valor")
+  pivot_longer(cols = everything(),
+               names_to = "Gas",
+               values_to = "Valor")
 
 datos_festivos <- datos_limpios %>%
   mutate(Dia_de_la_semana = factor(wday(Fecha))) %>%
-  filter(Dia_de_la_semana %in% c(1,6)) %>%
+  filter(Dia_de_la_semana %in% c(1, 6)) %>%
   select(gases_interes) %>%
   summarise_all(.funs = list(mean)) %>%
-  pivot_longer(cols=everything(),names_to = "Gas",values_to="Valor")
+  pivot_longer(cols = everything(),
+               names_to = "Gas",
+               values_to = "Valor")
 
 datos_combinados <- rbind(
   transform(datos_semanales, Tipo = "Semanal"),
@@ -712,7 +880,7 @@ ggplot(datos_combinados, aes(x = Gas, y = Valor, fill = Tipo)) +
 Podemos observar un incremento visibleen la medición del ruido medio a lo largo de los años. Obviamente, en los datos del 2020 podemos observar un decrecimiento de los mismos, producto del parón de la pandemia, pero vemos cómo continúa aun así subiendo.
 
 ```{r}
-datos_ruido <- datos_limpios[c("Fecha","Ruido")] %>%
+datos_ruido <- datos_limpios[c("Fecha", "Ruido")] %>%
   mutate(Ano = year(Fecha)) %>%
   select(-Fecha) %>%
   group_by(Ano) %>%
@@ -728,18 +896,19 @@ ggplot(datos_ruido, aes(x = Ano, y = Media_Ruido)) +
 Ahora comprobaremos si este ruido medido depende de la zona dónde la midamos. Para ello, vamos a observar el comportamiento de la varianza de la media de los ruidos agrupados por estaciones. Calcularemos la desviación para cada año y, finalmente, la media de todas las desviaciones Si el valor es pequeño, entonces podemos afirmar que el incremento en el ruido no es de ciertas zonas, sino generalizado.
 
 ```{r}
-datos_ruido_estaciones <- datos_limpios[c("Fecha","Estacion","Ruido")] %>%
+datos_ruido_estaciones <-
+  datos_limpios[c("Fecha", "Estacion", "Ruido")] %>%
   mutate(Ano = year(Fecha)) %>%
   select(-Fecha) %>%
-  group_by(Ano,Estacion) %>%
+  group_by(Ano, Estacion) %>%
   summarize(Media_Ruido = mean(Ruido, na.rm = TRUE, .groups = "drop")) %>%
   group_by(Ano) %>%
-  summarize(Desviacion_por_ano = sd(Media_Ruido,na.rm=TRUE))
+  summarize(Desviacion_por_ano = sd(Media_Ruido, na.rm = TRUE))
 
 ggplot(datos_ruido_estaciones, aes(x = Ano, y = Desviacion_por_ano)) +
   geom_line() +
   labs(x = "Año", y = "Desviacion de ruido por estación") +
-  theme_minimal() 
+  theme_minimal()
 
 mean(datos_ruido_estaciones$Desviacion_por_ano)
 ```
@@ -751,7 +920,7 @@ Podemos observar que, para los valores que tratamos (sobre 50 y 60), una desviac
 También se puede observar el aumento generalizado de la temperatura a lo largo de los años. Es curioso que, pese a que en el mundo existe un aumento generalizado de la temperatura, en Valencia estuvo bajando esta tendencia y no es hasta el año 2017 que comenzaron a subir de nuevo. Pese a lo mencionado, bastante visible el hecho de que nos encontramos en una tendencia creciente.
 
 ```{r}
-datos_temperatura <- datos_limpios[c("Fecha","Temperatura")] %>%
+datos_temperatura <- datos_limpios[c("Fecha", "Temperatura")] %>%
   mutate(Ano = year(Fecha)) %>%
   select(-Fecha) %>%
   group_by(Ano) %>%
@@ -761,7 +930,10 @@ ggplot(datos_temperatura, aes(x = Ano, y = Media_Temperatura)) +
   geom_line() +
   labs(x = "Año", y = "Media de Temperatura") +
   theme_minimal() +
-  scale_y_continuous(limits = c(min(datos_temperatura$Media_Temperatura), max(datos_temperatura$Media_Temperatura)))
+  scale_y_continuous(limits = c(
+    min(datos_temperatura$Media_Temperatura),
+    max(datos_temperatura$Media_Temperatura)
+  ))
 ```
 
 ## Cómo se ha comportado la contaminación a lo largo de los años
@@ -771,14 +943,19 @@ Cuando contestamos a la primera pregunta, nos centramos en gases que soltaban lo
 Esta vez podemos observar que se produjo un pico de todos los gases en el año 2016, pero que por lo general las medidas de estos se han mantenido bastante estables o incluso decrecientes en el tiempo.
 
 ```{r}
-datos_gases <- datos_limpios[c("Fecha", "NO", "NO2", "NOx", "SO2", "CO")] %>%
+datos_gases <-
+  datos_limpios[c("Fecha", "NO", "NO2", "NOx", "SO2", "CO")] %>%
   mutate(Ano = year(Fecha)) %>%
   select(-Fecha) %>%
-  pivot_longer(cols = c("NO", "NO2", "NOx", "SO2", "CO"), names_to = "Gas", values_to = "Valor") %>%
+  pivot_longer(
+    cols = c("NO", "NO2", "NOx", "SO2", "CO"),
+    names_to = "Gas",
+    values_to = "Valor"
+  ) %>%
   group_by(Ano, Gas) %>%
   summarize(Media = mean(Valor, na.rm = TRUE, .groups = "drop"))
 
-ggplot(datos_gases, aes(x=Ano,y=Media,color=Gas)) + 
+ggplot(datos_gases, aes(x = Ano, y = Media, color = Gas)) +
   geom_line() +
   labs(x = "Año") +
   theme_minimal()
