@@ -1,12 +1,42 @@
 ---
-title: "ProyectoAED2023"
-author: "Carlos, Diego, Miguel"
-date: "2023-11-02"
-output:
-  pdf_document: 
-    toc: true
-  html_document: 
-    toc: true
+title: ProyectoAED2023
+author:
+  - name: Carlos
+  - name: Diego
+  - name: Miguel
+affiliation:
+  - num: 1
+    address: |
+      Universidad de Valencia - 
+      ETSE, UV
+      Avinguda de l'Universitat, 46100 Burjassot, Valencia
+    email: leutnant@fh-muenster.de
+  - num: 2
+# document options
+journal: notspecified
+type: article
+status: submit
+# front matter
+simplesummary: |
+  A Simple summary goes here.
+abstract: |
+  Análisis exploratorio de un conjunto de datos sobre la calidad del aire de la ciudad de Valencia entre 2004 y 2022
+# back matter
+keywords: |
+  Contaminación, Valencia, datos, análisis
+abbreviations:
+  - short: MDPI
+    long: Multidisciplinary Digital Publishing Institute
+  - short: DOAJ
+    long: Directory of open access journals
+  - short: TLA
+    long: Three letter acronym
+  - short: LD 
+    long: linear dichroism
+endnotes: false
+output: 
+  rticles::mdpi_article:
+    extra_dependencies: longtable
 ---
 
 ```{r setup, include=FALSE}
@@ -595,7 +625,6 @@ datos_limpios_sin_outliers <- datos_limpios[-instancias_outliers,]
 # Resolución de preguntas planteadas sobre los datos
 
 En esta sección se resolverán las diferentes preguntas planteadas sobre los datos.
-
 ## Influencia de carril bici
 
 Para estudiar la influencia de un carril bici por el centro de Valencia, estudiaremos la evolución de gases contaminantes en diversas estaciones de la ciudad. Mediremos la evolución de los gases:
@@ -754,4 +783,5 @@ ggplot(datos_gases, aes(x=Ano,y=Media,color=Gas)) +
   labs(x = "Año") +
   theme_minimal()
 ```
+
 
