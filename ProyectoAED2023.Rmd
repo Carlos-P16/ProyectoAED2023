@@ -57,7 +57,7 @@ library(stats)
 
 # Importación de los datos
 
-El primer paso es importar nuestro dataset. Para ello, en primer lugar abrimos (por ejemplo en un bloc de notas) el archivo _rvvcca.csv_ localizado en la carpeta data. De esta forma vemos el formato en el que están guardados los datos, lo cuál es importante para su correcta importación. Por ejemplo, vemos que el separador de las variables es ';', lo cuál debe ser especificado en la función _read.csv()_ ya que esta toma por defecto espera ',' como separador. Tembién definimos el formato con el que queremos importar ciertas columnas, como pueden ser las columnas de tipo fecha o algunos factores.
+El primer paso es importar nuestro dataset. Para ello, en primer lugar abrimos (por ejemplo en un bloc de notas) el archivo _rvvcca.csv_ localizado en la carpeta data. De esta forma vemos el formato en el que están guardados los datos, lo cuál es importante para su correcta importación. Por ejemplo, vemos que el separador de las variables es ';', lo cuál debe ser especificado en la función _read_delim()_ de readr que usamos para la importación. Tembién definimos el formato con el que queremos importar ciertas columnas, como pueden ser las columnas de tipo fecha o algunos factores.
 
 ```{r}
 # Especificamos el tipo de columna para que los datos se importen directamente con un formato adecuado
@@ -74,53 +74,78 @@ datos <- read_delim("data/rvvcca.csv", delim = ";", escape_double = FALSE, trim_
 head(datos)
 ```
 
-La página de donde se obtuvo el dataset no presentaba ninguna explicación de las variables, pero podemos extraer las siguientes conclusiones:
-
-- *Id* es un identificador para cada una de las filas y no aporta ninguna información concreta.
-
-- *Fecha* es una variable tipo *Date* que nos proporciona la fecha en la que se tomaron los datos que componen la observación. Tomaremos esta variable para la ordenación ascendente de los datos.
-
-```{r}
-datos <- arrange(datos,datos$Fecha)
-```
-
-- *Dia_de_la_semana* y *Dia_del_mes* son variables de tipo factor que indican en que día de la semana y en qué dia del mes se realiza la medida. Puede ser extraído a partir de *Fecha* usando las funciones _wday()_ y _day()_, de la librería _lubridate_.
-
-- *Estacion* es una variable de tipo factor cuyos niveles son las distintas estaciones meteorológicas donde se tomaron las mediciones de las variables numéricas, haciendo un total de 13 estaciones.
-
-```{r}
-unique(datos$Estacion)
-```
-
-- *PM1, PM2.5, PM10* son variables de tipo numérico con datos sobre la concentración de materiales particuldos (OM) de menos de 1, 2.5 y 10 micrómetros de diámetro respectivamente.
-
-- *NO, NO2, NOx, O2, SO2, CO, NH3* son variables con datos sobre la concentración de estas moléculas inorgánicas consideradas contaminantes en el aire. Respecto a los oxidos de nitrogeno (NOx), estos son un grupo de gases compuestos por oxigeno y nitrogeno, es decir, NO y NO2 forman parte de este grupo y por lo tanto los valores de las variables estarán altamente correlados.
-
-- *C7H8, C6H6, C8H10* son variables con datos sobre la concentración de estas moléculas orgánicas también consideradas contaminantes en el aire.
-
-- *Velocidad_del_viento, Direccion_del_viento, Temperatura, Humidad_relativa, Presion, Radiacion_solar, Precipitacion, Velocidad_maxima_del_viento* son variables numéricas con mediciones de estas distintas condiciones ambientales al momento de medir las concentraciones de moléculas contaminantes en el aire. Es interesante contar con estos datos para ver si influyen en los valores de contaminación.
-
-- *As, Ni, Cd, Pb, B(a)p* son variables numéricas con datos de otras concentraciones de gases y metales contaminantes en el aire. Todos estas variables presentaban el prefijo (ng/m3) indicando las unidades en que se mide sus concentraciones. El resto de datos de concentraciones no presentan las unidades lo cuál nos hace sospechar que auiás los datos de estas variables fueron unidos a este dataset a posteriori.
-
-- *Fecha_creación* y *Fecha_baja* son variables de tipo *Date* que parecen estar relacionadas con la creacion del dataset y que no parecen aportar información sobre nuestros datos.
-
-```{r}
-unique(datos$Fecha_creacion)
-unique(datos$Fecha_baja)
-```
-
- *Fecha_creación* solo presenta dos entradas distintas y *Fecha_baja* sólo presenta NA's por lo que estas variables parecen prescindibles`
-
-Para evitar posibles problemas, renombramos las varianles con espacios en su nombre para trabajar sin comillas ' ' y eliminamos el sufijo (ng/m³) de algunas variables
+Para evitar posibles problemas, renombramos las varianles con espacios en su nombre para trabajar sin comillas ' ' y eliminamos el sufijo (ng/m³) que aparece en algunas variables
 
 ```{r}
 colnames(datos) <- gsub(x = colnames(datos), pattern=' ', replacement = '_')
 colnames(datos) <- gsub(x = colnames(datos), pattern='_[(]ng[/]m³[)]$', replacement = '')
 ```
 
+Para observar las características generales de nuestro dataset vamos a resumir en una tabla el tipo de cada variable *tyoe*, cuantos valores distintos tiene *levels*, su valor más frecuente *topLevel*, cuántas veces aparece *topCount*, y en qué proporción *topFreq* y por último la proporción de datos faltantes de cada variable *missFreq*:
+
+```{r}
+levels <- function(x){
+  as.character(length(unique(x)))
+}
+
+topLevel <- function(x){
+  names(which.max(table(x)))
+}
+
+topCount <- function(x){
+  as.character(sum(as.character(x)==names(which.max(table(x))), na.rm = T))
+}
+
+topFrec <- function(x){
+  as.character(round(sum(as.character(x)==names(which.max(table(x))), na.rm = T)/length(x), digits = 3))
+}
+
+missFrec <- function(x){
+  as.character(round(sum(is.na(x))/length(x), digits=3))
+}
+
+sumario <- list(type = ~class(.x), levels = ~levels(.x), topLevel = ~topLevel(.x), topCount = ~topCount(.x), topFrec = ~topFrec(.x), missFrec = ~missFrec(.x))
+
+datos %>%
+  summarise(across(.cols = all_of(colnames(datos)), .fns = sumario, .names = "{.col}-{.fn}")) %>% 
+  pivot_longer(cols = 1:203, names_to = 'variable_estadistica', values_to = 'valor') %>%
+  separate(variable_estadistica, into =  c('variable', 'estadistica'), sep = '-') %>%
+  pivot_wider(names_from = 'estadistica', values_from = 'valor')
+```
+
+- *Id* es un identificador para cada una de las filas y no aporta ninguna información concreta.
+
+- *Fecha* es una variable tipo *Date* que nos proporciona la fecha en la que se tomaron los datos que componen la observación. Tomaremos esta variable para la ordenación ascendente de los datos. Vemos que hay datos de casi 7000 días distintos y que el día con más datos (esto se corresponde a más estaciones distintas midiendo 12/13) es el 01-01-2022.
+
+```{r}
+datos <- arrange(datos,datos$Fecha)
+```
+
+- *Dia_de_la_semana* y *Dia_del_mes* son variables de tipo factor que indican en que día de la semana y en qué día del mes se realiza la medida. Puede ser extraído a partir de *Fecha* usando las funciones _wday()_ y _day()_, de la librería _lubridate_. Vemos que el día de la semana más repetido es el Sábado y el del mes es el 31, sin embargo sus frecuecnias son prácticamente 1/7 y 1/30 por lo que parece indicar que todos los días de la semana y del mes están en la misma proporción. Esto estaría enconcordancia con el hecho de que tenemos datos realmente diarios.
+
+- *Estacion* es una variable de tipo factor cuyos niveles son las distintas estaciones meteorológicas donde se tomaron las mediciones de las variables numéricas, haciendo un total de 13 estaciones. La más repetida es la estación de Pista de Silla con una frecuencia de 0.16 > 1/13 = 0.077. Esto significa que es la estación que aparece en más días distintos, y es indicativo de que no todas las estaciones funcionan durante el mismo tiempo.
+
+```{r}
+unique(datos$Estacion)
+```
+
+- *PM1, PM2.5, PM10* son variables de tipo numérico con datos sobre la concentración de materiales particuldos (PM) de menos de 1, 2.5 y 10 micrómetros de diámetro respectivamente. Pese a ser variables numéricas supuestamente continuas llama a la atención que no hay un gran número de niveles distintos comparado con el número de filas del del dataset (alrededor de 10 veces menos). También vemos que hay un gran número de datos faltantes, sobre todo para PM1 (más de un 70%) y esto puede explicar en parte que no haya tantos valores distintos. Sin embargo, también podría deberse a que quizá durante muchos días el nivel de concentración de esas partículas se mantiene constante (o al menos la sensibilidad del sensor que las mide no es capaz de medir tal diferencia). La gran cantidad de datos faltantes puede deberse a que las varaibles no se miden durante ciertos períodos de tiempo o en todas las estaciones.
+
+- *NO, NO2, NOx, O2, SO2, CO, NH3* son variables con datos sobre la concentración de estas moléculas inorgánicas consideradas contaminantes en el aire. Respecto a los óxidos de nitrógeno (NOx), estos son un grupo de gases compuestos por oxígeno y nitrógeno, es decir, NO y NO2 forman parte de este grupo y por lo tanto los valores de las variables estarán altamente correlacionados. La proporción de NA's en estas variables menor en este caso, alrededor del 20% con excepción del NH3 que presenta más de un 90% de datos faltantes. De nuevo el número de NA's puede deberse a los mismos motivos argumentados anteriormente y que comprobaremos más adelante en el análisis. Por otro lado, también tenemos unos pocos cientos de valores distintos para ser también variables numéricas continuas y esto puede deberse a las mismas causas argumentadas para los materiales particulados.
+
+- *C7H8, C6H6, C8H10* son variables con datos sobre la concentración de estas moléculas orgánicas también consideradas contaminantes en el aire. De nuevo estas variables numéricas y continuas presentan datos faltantes por encima del 90% y muchos menos niveles distintos que observacioness de las variables. Podrían ofrecerse los mismos argumentos para explicar estos hechos. El porcentaje similar de datos faltantes podría se debido a que estas variables se miden al vez (en las mismas estaciones y períodos de tiempo).
+
+- *Velocidad_del_viento, Direccion_del_viento, Temperatura, Humidad_relativa, Presion, Radiacion_solar, Precipitacion, Velocidad_maxima_del_viento* son variables numéricas con mediciones de estas distintas condiciones ambientales al momento de medir las concentraciones de moléculas contaminantes en el aire. Es interesante contar con estos datos para ver si influyen en los valores de contaminación. Estas variables presentan entre un 50-60% de datos faltantes que puede deberse a que no todas las estacione miden las condiciones ambientales.
+
+- *As, Ni, Cd, Pb* son variables numéricas con datos de otras concentraciones de gases y metales contaminantes en el aire. Todos estas variables presentaban el prefijo (ng/m3) indicando las unidades en que se mide sus concentraciones. El resto de datos de concentraciones no presentan las unidades lo cuál nos hace sospechar que auiás los datos de estas variables fueron medidas en conjunto. Esto también explicaría que todos tengan el mismo porcentaje de datos faltantes (entorno al 98%). De nuevo, en el análisis comprobaremos a qué puede deberse esta cantidad de datos faltantes.
+
+- *B(a)p* es una variable booleana que sólo presenta una observación. Elresto de datos son faltants y no podemos saber lo que representa esta variable.
+
+- *Fecha_creación* y *Fecha_baja* son variables de tipo *Date* que parecen estar relacionadas con la creacion del dataset y que no parecen aportar información sobre nuestros datos. *Fecha_creación* solo presenta dos entradas distintas y *Fecha_baja* sólo presenta NA's por lo que estas variables parecen prescindibles.
+
 Vamos a mantener sólo las variables que aporten alguna información relevante:
 ```{r}
-datos <- datos %>% select(-c('Id', 'Dia_de_la_semana','Dia_del_mes','Fecha_creacion', 'Fecha_baja'))
+datos <- datos %>% select(-c('Id', 'Dia_de_la_semana','Dia_del_mes','Fecha_creacion', 'Fecha_baja', 'B(a)p'))
 ```
 
 
@@ -138,7 +163,7 @@ reemplazo_especiales <- function(x){
 datos <- mutate(datos, across(all_of(variables_numericas), reemplazo_especiales))
 ```
 
-A continuación vamos a calcular el porcentaje de NA's que tiene cada variable.
+Ya hemos visto que nuestras variables numéricas tienen un alto porcentaje de NA's:
 
 ```{r}
 porc_na <- function(x){
@@ -151,9 +176,9 @@ datos %>%
   mutate(`Porcentaje NA's`=round(`Porcentaje NA's`, digits = 2))
 ```
 
-Vemos como la variable B(a)p está casi vacía (sólo tiene una entrada) y hay varias variables con un porcentaje de NA's por encima del 90% y muchas otras por encima del 50%. Esto quizá sea debido a que algunas variables se empezaron a medir más tarde que otras o a que no en todas las estaciones se miden todas las variables.
+Como ya hemos comentado, pensamos que el elevado número de datos faltantes puede deberse a que algunas variables se miden en peródos de tiempo diferentes a las demás o a que no en todas las estaciones se miden todas las variables. Al unir los datos de las distintas estaciones por la fecha, se habrían dado lugar los NA's. Para comprobar esta teoría vamos a realizar una serie de representacions gráficas exploratorias.
 
-A continuación creamos un mapa de calor para comprobar que variables se miden en cada estación y con que frecuencia.
+En primer lugar, creamos un mapa de calor para comprobar cuáles son las variables que mide cada estación y cuántos datos de dicha variable aporta cada estación.
 
 ```{r}
 num_entradas <- function(x){
