@@ -3,12 +3,14 @@ title: "ProyectoAED2023"
 author: "Carlos, Diego, Miguel"
 date: "2023-11-02"
 output:
-  html_document: default
-  pdf_document: default
+  pdf_document: 
+    toc: true
+  html_document: 
+    toc: true
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE, warning=FALSE)
 ```
 
 # Introducción
@@ -21,7 +23,7 @@ Una vez preparado el dataset, procederemos a responder a las preguntas planteada
 
 
 
-# Objetivos
+## Objetivos
 
 El objetivo principal de este trabajo es familizarse con las herramientas y metodologías aprendidas para la carga, manipulación y análisis exploratorio de un conjunto de datos. 
 
@@ -43,19 +45,11 @@ A lo largo del desarrollo del proyecto se irán planteando y resolviendo las pre
 
 
 
-# Carga de librerías y datos
+## Carga de librerías y datos
 
 ```{r}
-library(readr) # Carga de datos
-library(lubridate) # Manejo de datos
-library(tidyr) # Manejo de datos
-library(dplyr) # Manejo de datos
-library(ggplot2) # Visualización de datos
-library(plotly) # Visualización de datos interactiva
-library(stats)
+pacman::p_load(readr, lubridate, tidyr, dplyr, ggplot2, plotly, stats)
 ```
-
-# Importación de los datos
 
 El primer paso es importar nuestro dataset. Para ello, en primer lugar abrimos (por ejemplo en un bloc de notas) el archivo _rvvcca.csv_ localizado en la carpeta data. De esta forma vemos el formato en el que están guardados los datos, lo cuál es importante para su correcta importación. Por ejemplo, vemos que el separador de las variables es ';', lo cuál debe ser especificado en la función _read_delim()_ de readr que usamos para la importación. Tembién definimos el formato con el que queremos importar ciertas columnas, como pueden ser las columnas de tipo fecha o algunos factores.
 
@@ -195,7 +189,7 @@ p <- ggplot(data = est_var, aes(x = Estacion, y=Variable, fill = Numero_entradas
   geom_tile() + scale_fill_gradient(low = "white", high = "blue") + 
   theme(axis.text.x=element_text(angle=45, hjust=1))
 
-plotly::ggplotly(p)
+#plotly::ggplotly(p)
 ```
 
 En este mapa de calor podemos ver qué variables mide cada estación meteorológica, además de la cantidad de datos que aporta cada una de ellas sobre cada varaible numérica. Vemos como sólo hay dos estaciones (Viveros y Boulevard Sud) que miden las variables *As*, *Pb*, *Ni* y *Cd* y que su número de entradas es bajo en comparación con otras variable, quizá debido a que se empezaron a tomar datos de estas variables más tarde que el resto. En el caso del *NH3* vemos que solo se ha medido en la estación Boulevard Sud. Las moléculas orgánicas *C8H10*, *C6H6*, *C7H8* sólo se miden en las estaciones de Pista de Silla y Viveros. Cabe destacar también que las estaciones que miden mayor cantidad de variables son Pista de Silla, Viveros y Boulevard Sud. Por otro lado, estaciones como Conselleria Meteo y Nazaret Meteo sólo miden las condiciones ambientales y no las concentraciones de contaminantes, al igual que la estación del Puerto de Valencia con la diferencia que en esta además se miden los niveles de partículas *PM10* y de *SO2*. Además, vemos como en la estación de Valencia Olivereta sólo se miden niveles de partículas *PM2.5*, *PM10* y óxidos de nitrógeno.
@@ -315,9 +309,9 @@ datos[c(2,c(9:16))] %>%
 ```
 
 
-# Detección y eliminación de outliers con métodos univariante
+## Detección y eliminación de outliers con métodos univariante
 
-A continuación, procederemos a detectar y eliminar outliers.
+A continuación, procederemos a detectar y eliminar outliers. Primero, comenzaremos definiendo diferentes funciones posibles para aplicar la detección de estos. Todas estas funciones corresponden a métodos univariantes.
 
 ```{r}
 tresSigma <- function(x){
@@ -376,7 +370,7 @@ replace_outliers <- function(x, func) {
 }
 ```
 
-Vamos a comprobar el funcionamiento de los métodos de detección de outliers. Lo aplicaremos sobre todas las variables numéricas.
+Vamos a comprobar el funcionamiento de los métodos de detección de outliers. Lo aplicaremos sobre todas las variables numéricas y comprobaremos el número de outliers que detecta cada función para cada variable.
 ```{r}
 columnas_numericas <- names(datos)[3:16]
 
@@ -405,9 +399,15 @@ ggplot(resultados, aes(x = Columna, y = Outliers_Detectados, fill = Metodo)) +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 ```
 
-Usaremos el metodo de Hampel, ya que por la naturaleza de los datos no podemos suponer los datos como una distribución Gaussiana.
+Podemos observar cómo la regla del percentil siempre elimina datos, esto es debido a la naturaleza de la regla, la cual siempre eliminará el 2.5% que quede por arriba y el 2.5% por abajo. Podemos usar esto como comparador de el resto de métodos.
 
-A continuación, reemplazaremos los outliers por NA.
+El resto de métodos, en la mayoría de ocasiones quedan por debajo del criterio del percentil. No obstante, es visible el agresivo comportamiento de la regla boxplot y el excesivamente poco agresivo método de la regla 3-sigma. En cuanto al comportamiento de la regla de Hampel, parece comportarse como una versión agresiva pero manteniendo la prudencia de la regla 3-sigma.
+
+Pese a que, según las matemáticas, cuantos más datos tenemos, más se parece la distribución de los mismos a una Gaussiana, hemos visto anteriormente que no todos los datos siguen esta distribución.
+
+Por este motivo, hemos decidido utilizar la regla de Hampel para la detección de los outliers, ya que esta es una regla robusta a distribuciones que no sean Gaussianas.
+
+A continuación, reemplazaremos los outliers detectados por NA.
 
 ```{r}
 datos_no_outliers <- datos %>%
@@ -477,7 +477,7 @@ datos_no_outliers %>%
 Como era de esperar, las variables meteorológicas no han sufrido variaciones a lo largo de los años. Por otro lado si que se aprecia un leve aumento en el ruido.
 
 
-# Imputación de NA's
+## Imputación de NA's
 
 Centrándonos en las variables de interés, si bien son más consistentes en lo que se refiere a las entradas diarias de cada variable, todavía hay muchos datos faltantes. No obstante, podemos aprovechar el hecho de que los datos diarios de las variables en todas las estaciones de Valencia suelen ser muy parecidos, por lo que decidimos imputar los datos faltantes en cada día con la media de esta variable sobre todas las estaciones. Tras realizar esta imputación, todavía hay algunas variables que presentan NA's, esto se debe a que hay algunos días donde donde esta variable no se ha medido en ninguna de las estaciones. Esto sólo ocurre en el 11% de las observaciones, por lo que decidimos desprendernos de estas observaciones, ya que el volúmen de datos es suficientemente grande y los datos todavía pueden considerarse diarios.
 
@@ -499,10 +499,11 @@ datos_limpios <- datos_no_outliers %>%
 
 datos_limpios <- datos_limpios[complete.cases(datos_limpios),]
 ```
-
-# Analisis bivariante 2 (tras imputación de NA)
-
 ## Correlaciones
+
+La correlación puede tener valores en el rango [-1,1]. Siendo -1 el indicador de un comportamiento absolutamente contrario y siendo 1 la misma variable, pues tiene exactamente el mismo comportamiento.
+
+Esto puede darnos información para reflexionar sobre la naturaleza y comportamiento de los datos.
 
 ```{r, eval=FALSE}
 library(GGally)
@@ -535,9 +536,8 @@ diff_S <- abs(corr1_S-corr2_S)
 diff_S
 
 ggcorr(datos_limpios[3:15])
-
-#ggpairs(datos_limpios[3:15])
 ```
+
 Basándonos en las observaciones, podemos extraer las siguientes conclusiones:
 
 + Existe una correlación negativa importante entre NOs y Ozono. Esto podría deberse a que la presencia de óxidos de nitrógeno puede contribuir a la degradación del ozono en la atmósfera, lo que tiene implicaciones para la calidad del aire, la contaminación y el efecto hivernadero.
@@ -547,6 +547,27 @@ Basándonos en las observaciones, podemos extraer las siguientes conclusiones:
 + Correlación positiva entre Temperatura y Radiación Solar. Esto es coherente con las estaciones más cálidas que a menudo experimentan más horas de sol y mayor radiación solar.
 
 + Correlación entre Radiación Solar y Ozono. Esto tiene sentido ya que la capa de ozono filtra la mayor parte de la radiación ultravioleta proveniente del sol, por lo tanto están muy relacionados entre ellos.
+
+También hemos filtrado las correlaciones para mostrar únicamente las mayores correlaciones. Hemos puesto un umbral para escoger solo las correlaciones que sean mayores a 0.7 para visualizar las variables muy correlacionadas (eliminando las correlaciones de una variable con ella misma). Hemos puesto el ejemplo en el que las correlaciones son directas para la siguiente visualización. Podría realizarse esto para las correlaciones inversas.
+
+```{r, eval=FALSE}
+df <- cor(na.omit(datos_limpios[3:15])) %>%
+  as.data.frame(.)
+
+df$Variable1 <- rownames(df)
+
+cor <- df %>%
+  pivot_longer(cols = -Variable1, names_to = "Variable2", values_to = "Correlation")
+
+correlaciones <- cor[cor$Correlation > 0.7,] %>% arrange(desc(Correlation)) %>% filter(Variable1 != Variable2)
+correlaciones_inversas <- cor[cor$Correlation < -0.7,] %>% arrange(Correlation) %>% filter(Variable1 != Variable2)
+paste0("El numero total de correlaciones inversas es ",nrow(correlaciones_inversas),". Por lo tanto, solo estudiaremos las correlaciones directas")
+
+ggplot(correlaciones, aes(x = Variable1, y = Variable2, color = Correlation)) +
+  geom_tile(aes(fill = Correlation)) +
+  theme_minimal() +
+  labs(title = "Correlaciones Positivas")
+```
 
 ## Detección y eliminación de outliers con métodos multivariable
 
@@ -571,39 +592,10 @@ paste0("La distancia de mahalanobis detecta como outliers ", length(instancias_o
 datos_limpios_sin_outliers <- datos_limpios[-instancias_outliers,]
 ```
 
-## Variables más y menos correlacionadas
+# Resolución de preguntas planteadas sobre los datos
 
-La correlación puede tener valores en el rango [-1,1]. Siendo -1 el indicador de un comportamiento absolutamente contrario y siendo 1 la misma variable, pues tiene exactamente el mismo comportamiento.
-
-A continuación, observaremos en orden descendente las correlaciones de variables superiores a 0'7. Además, también observaremos las correlaciones menores de 0'7 en orden descendente.
-
-Esto puede darnos información para reflexionar sobre la naturaleza y comportamiento de los datos.
-
-```{r}
-library(GGally)
-#columnas_numericas_limpias <- setdiff(columnas_numericas,c('Pb','Cd','Ni','As','B(a)p','NH3','C7H8','C6H6','C8H10'))
-df <- cor(na.omit(datos_limpios[3:15])) %>%
-  as.data.frame(.)
-
-df$Variable1 <- rownames(df)
-
-cor <- df %>%
-  pivot_longer(cols = -Variable1, names_to = "Variable2", values_to = "Correlation")
-
-correlaciones <- cor[cor$Correlation > 0.7,] %>% arrange(desc(Correlation)) %>% filter(Variable1 != Variable2)
-correlaciones_inversas <- cor[cor$Correlation < -0.7,] %>% arrange(Correlation) %>% filter(Variable1 != Variable2)
-paste0("El numero total de correlaciones inversas es ",nrow(correlaciones_inversas),". Por lo tanto, solo estudiaremos las correlaciones directas")
-
-ggplot(correlaciones, aes(x = Variable1, y = Variable2, color = Correlation)) +
-  geom_tile(aes(fill = Correlation)) +
-  theme_minimal() +
-  labs(title = "Correlaciones Positivas")
-
-ggcorr(datos_limpios[3:15])
-```
-
-
-# Influencia de carril bici
+En esta sección se resolverán las diferentes preguntas planteadas sobre los datos.
+## Influencia de carril bici
 
 Para estudiar la influencia de un carril bici por el centro de Valencia, estudiaremos la evolución de gases contaminantes en diversas estaciones de la ciudad. Mediremos la evolución de los gases:
 
@@ -649,7 +641,7 @@ Si bien no se observan cambios significativos en los niveles de SO2, en los nive
 
 Respecto al NO2 si que se puede apreciar una reducción a lo largo de los años. Con unos niveles más bajos especialmente en los últimos 3 años. Además se puede apreciar una periodicidad, concretamente una reducción de los niveles de NO2 en los meses de verano. Esto coincide con el momento del año donde menos gente vive en la ciudad y por lo tanto menos tráfico hay. En conclusión parece que las medidas de transporte que se han tomado en la ciudad han influenciado en la reducción de gases contaminantes.
 
-# Relación entre la calidad del aire y el dia de la semana
+## Relación entre la calidad del aire y el dia de la semana
 
 Aqui observamos si, en general la calidad del aire se ve influenciada por el día de la semana. Queremos sobre todo fijarnos en la distinción entre días laborables y de descanso. Podemos comprobar cómo, efectivamente, existe una disminución en los gases contaminantes los días festivos con respecto a los días laborables.
 
@@ -685,7 +677,7 @@ ggplot(datos_combinados, aes(x = Gas, y = Valor, fill = Tipo)) +
   theme(legend.title = element_blank())
 ```
 
-# Evolución de la contaminación sonora a lo largo de los años
+## Evolución de la contaminación sonora a lo largo de los años
 
 Podemos observar un incremento visibleen la medición del ruido medio a lo largo de los años. Obviamente, en los datos del 2020 podemos observar un decrecimiento de los mismos, producto del parón de la pandemia, pero vemos cómo continúa aun así subiendo.
 
@@ -724,7 +716,7 @@ mean(datos_ruido_estaciones$Desviacion_por_ano)
 
 Podemos observar que, para los valores que tratamos (sobre 50 y 60), una desviación del 0.3 es despreciable.
 
-# Evolución de la temperatura a lo largo de los años
+## Evolución de la temperatura a lo largo de los años
 
 También se puede observar el aumento generalizado de la temperatura a lo largo de los años. Es curioso que, pese a que en el mundo existe un aumento generalizado de la temperatura, en Valencia estuvo bajando esta tendencia y no es hasta el año 2017 que comenzaron a subir de nuevo. Pese a lo mencionado, bastante visible el hecho de que nos encontramos en una tendencia creciente.
 
@@ -742,7 +734,7 @@ ggplot(datos_temperatura, aes(x = Ano, y = Media_Temperatura)) +
   scale_y_continuous(limits = c(min(datos_temperatura$Media_Temperatura), max(datos_temperatura$Media_Temperatura)))
 ```
 
-# Cómo se ha comportado la contaminación a lo largo de los años
+## Cómo se ha comportado la contaminación a lo largo de los años
 
 Cuando contestamos a la primera pregunta, nos centramos en gases que soltaban los carburantes y solo observamos las estaciones más cercanas al centro de Valencia. En esta ocasión, estudiaremos el comportamiento de todos los gases contaminantes en todas las estaciones.
 
