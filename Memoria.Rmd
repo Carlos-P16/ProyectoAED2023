@@ -38,43 +38,44 @@ knitr::opts_chunk$set(echo = FALSE, warning=FALSE, out.width = '80%')
 
 En el presente informe planteamos el análisis exploratorio de un conjunto de datos sobre la calidad del aire de la ciudad de Valencia entre 2004 y 2022. El dataset empleado continene observaciones obtenidas de distintas estaciones de la red de vigilancia de Valencia. Las observaciones están compuestas por variables respectivas a diversas moleculas y elementos presentes en el aire junto a otras de tipo meteorológico como la velocidad del viento, la temperatura, etc.
 
-El procedimiento a seguir comenzará con la correcta importación del dataset, a lo que seguirá la preparación de los datos para resolver las preguntas planteadas. Se escogerán las variables de interés y los periodos temporales sobre los que se realizará el análisis, se aplicarán las transformaciones necesarias sobre las variables, se reestructurará el dataset acorde a nuestras necesidades y se gestionarán los outliers y datos faltantes.
+El procedimiento a seguir comenzará con la correcta importación del dataset, a lo que seguirá un previo estudio de los datos con el objetivo de conocer la estructura del dataset y sus peculiaridades. Continuaremos con la preparación de los datos para resolver las preguntas planteadas y escogerán las variables de interés y los periodos temporales sobre los que se realizará el análisis univariante y bivariante, por otro lado también se gestionarán los outliers y datos faltantes.
 
-Una vez preparado el dataset, procederemos a responder a las preguntas planteadas mediante diversas metodologías. Todo el proceso irá acompañado de las explicaciones pertinentes y finalizaremos con una conclusión del trabajo realizado.
-
-
-
-## Objetivos
-
-El objetivo principal de este trabajo es familizarse con las herramientas y metodologías aprendidas para la carga, manipulación y análisis exploratorio de un conjunto de datos. 
-
-+ analisis univariante, bivariante, NA, outliers
-
-Para ello se van a plantear una serie de objetivos es forma de preguntas que requerirán la aplicación de las herramientas y metodologías aprendidas:
-
-+ ¿?Influencia del cambio en el tráfico hacia el centro de la ciudad en los últimos años. (carriles bici) : Comprobar posible reducción de gases emitidos por vehículos a motor en las estaciones más céntricas.
-
-+ ¿?Existe alguna correlación entre la calidad del aire y el día de la semana/año
-
-+ ¿?Existe cierta evolución de la contaminación sonora (años/zonas)
-
-+ ¿?Existe cierta evolución de la temperatura (A medias, se puede hacer algo más o incluso relacionarlo con las precipitaciones. No se me ocurre cómo pero se le podría dar una vuelta)
-
-+ ¿?Existe cierta evolución de la contaminación. Como medir la contaminación (Falta esta)
-
-A lo largo del desarrollo del proyecto se irán planteando y resolviendo las preguntas anteriores junto a su razonamiento y conclusiones.
+Una vez preparado el dataset y estudiadas sus variables, procederemos a responder a las preguntas planteadas mediante diversas metodologías. Todo el proceso irá acompañado de las explicaciones pertinentes y finalizaremos con una conclusión del trabajo realizado.
 
 
+# Objetivos
 
-## Carga de librerías y datos
+El objetivo principal de este trabajo es familizarse con las herramientas y metodologías aprendidas para la carga, manipulación y análisis exploratorio de un conjunto de datos. Como objetivos principales tenemos:
+
++ Analisis univariante y bivariante
+
++ Detección e imputación de NA's
+
++ Detección y gestión de outliers
+
+Por otro lado, planteamos otros objetivos en forma de preguntas:
+
++ ¿Existe algún tipo de influencia sobre los niveles de gases contaminantes debido al cambio en el tráfico hacia el centro (creación carriles bici y reducción de carriles) de la ciudad en los últimos años?
+
++ ¿Existe alguna correlación entre la calidad del aire y el día de la semana/año?
+
++ ¿Existe cierta evolución de la contaminación sonora (años/zonas)?
+
++ ¿Existe cierta evolución de la temperatura? (A medias, se puede hacer algo más o incluso relacionarlo con las precipitaciones. No se me ocurre cómo pero se le podría dar una vuelta)
+
++ ¿Existe cierta evolución de la contaminación. Como medir la contaminación? (Falta esta)
+
+
+# Análisis exploratorio de los datos
+
+## Importación de los datos
 
 ```{r}
 pacman::p_load(readr, lubridate, tidyr, dplyr, ggplot2, plotly, stats, kableExtra)
 ```
 
-El primer paso es importar nuestro dataset. Para ello, en primer lugar abrimos (por ejemplo en un bloc de notas) el archivo _rvvcca.csv_ localizado en la carpeta data. De esta forma vemos el formato en el que están guardados los datos, lo cuál es importante para su correcta importación. Por ejemplo, vemos que el separador de las variables es ';', lo cuál debe ser especificado en la función _read_delim()_ de readr que usamos para la importación. Tembién definimos el formato con el que queremos importar ciertas columnas, como pueden ser las columnas de tipo fecha o algunos factores. 
-
 ```{r}
+# Tipo de las columnas
 column_types <- cols(
   Fecha = col_date(format = "%Y-%m-%d"),
   `Dia de la semana` = col_factor(
@@ -94,6 +95,7 @@ column_types <- cols(
   `Fecha baja` = col_date(format = "%Y-%m-%d")
 )
 
+# Parámetros importación
 datos <-
   read_delim(
     "data/rvvcca.csv",
@@ -104,9 +106,8 @@ datos <-
   )
 ```
 
-Para evitar posibles problemas, renombramos las varianles con espacios en su nombre para trabajar sin comillas ' ', eliminamos el sufijo (ng/m³) que aparece en algunas variables y acortamos los nombres de algunas variables.
-
 ```{r}
+# Renombrando variables
 colnames(datos) <-
   gsub(x = colnames(datos),
        pattern = ' ',
@@ -121,9 +122,8 @@ datos <- datos %>% rename(Vel_viento = Velocidad_del_viento,
                           Max_vel_viento = Velocidad_maxima_del_viento)
 ```
 
-Para observar las características generales de nuestro dataset vamos a resumir en una tabla el tipo de cada variable *tyoe*, cuantos valores distintos tiene *levels*, su valor más frecuente *topLevel*, cuántas veces aparece *topCount*, y en qué proporción *topFreq* y por último la proporción de datos faltantes de cada variable *missFreq*. En el Anexo 1, en la Tabla \ref{tabla:anexo1}, encontramos las características generales obtenidas.
-
 ```{r, include=FALSE}
+# Sumario
 levels <- function(x) {
   as.character(length(unique(x)))
 }
@@ -172,6 +172,7 @@ res <- datos %>%
            sep = '-') %>%
   pivot_wider(names_from = 'estadistica', values_from = 'valor')
 
+# Resultado
 anexo1 <- kableExtra::kable(res, format = "latex", 
              booktabs = TRUE, 
              caption = "Sumario variables\\label{tabla:anexo1}", 
@@ -180,37 +181,58 @@ anexo1 <- kableExtra::kable(res, format = "latex",
   kableExtra::kable_styling(font_size=7)
 ```
 
+<!-- El primer paso es importar nuestro dataset. Para ello, en primer lugar abrimos (por ejemplo en un bloc de notas) el archivo _rvvcca.csv_ localizado en la carpeta data. De esta forma vemos el formato en el que están guardados los datos, lo cuál es importante para su correcta importación. Por ejemplo, vemos que el separador de las variables es ';', lo cuál debe ser especificado en la función _read_delim()_ de readr que usamos para la importación. Tembién definimos el formato con el que queremos importar ciertas columnas, como pueden ser las columnas de tipo fecha o algunos factores. -->
+
+<!-- Para evitar posibles problemas, renombramos las varianles con espacios en su nombre para trabajar sin comillas ' ', eliminamos el sufijo (ng/m³) que aparece en algunas variables y acortamos los nombres de algunas variables. -->
+
+Para la importación de nuestro dataset fue necesario establecer ";" como el separador de las variables. Por otro lado, definimos el formato de las variables de forma previa ya que tras una exploración visual percibimos variables de tipo _factor_ y _fecha_. Con el objetivo de estudiar las características generales de nuestro dataset realizamos un sumario con el tipo de cada variable *type*, cuantos valores distintos tiene *levels*, su valor más frecuente *topLevel*, cuántas veces aparece *topCount*, y en qué proporción *topFreq* y por último la proporción de datos faltantes de cada variable *missFreq*. En el Anexo 1, en la Tabla \ref{tabla:anexo1}, encontramos las características generales obtenidas. A contrinuación explicamos cada variable:
+
 - *Id* es un identificador para cada una de las filas y no aporta ninguna información concreta.
 
-- *Fecha* es una variable tipo *Date* que nos proporciona la fecha en la que se tomaron los datos que componen la observación. Tomaremos esta variable para la ordenación ascendente de los datos. Vemos que hay datos de casi 7000 días distintos y que el día con más datos (esto se corresponde a más estaciones distintas midiendo 12/13) es el 01-01-2022.
+- *Fecha* es una variable tipo *Date* que nos proporciona la fecha en la que se tomaron los datos que componen la observación. Tomaremos esta variable para la ordenación ascendente de los datos.
 
 ```{r}
 datos <- arrange(datos, datos$Fecha)
 ```
 
-- *Dia_de_la_semana* y *Dia_del_mes* son variables de tipo factor que indican en que día de la semana y en qué día del mes se realiza la medida. Puede ser extraído a partir de *Fecha* usando las funciones _wday()_ y _day()_, de la librería _lubridate_. Vemos que el día de la semana más repetido es el Sábado y el del mes es el 31, sin embargo sus frecuecnias son prácticamente 1/7 y 1/30 por lo que parece indicar que todos los días de la semana y del mes están en la misma proporción. Esto estaría enconcordancia con el hecho de que tenemos datos realmente diarios.
+- *Dia_de_la_semana* y *Dia_del_mes* son variables de tipo factor que indican en que día de la semana y en qué día del mes se realiza la medida. Puede ser extraído a partir de *Fecha* usando las funciones _wday()_ y _day()_, de la librería _lubridate_. 
 
-- *Estacion* es una variable de tipo factor cuyos niveles son las distintas estaciones meteorológicas donde se tomaron las mediciones de las variables numéricas, haciendo un total de 13 estaciones. La más repetida es la estación de Pista de Silla con una frecuencia de 0.16 > 1/13 = 0.077. Esto significa que es la estación que aparece en más días distintos, y es indicativo de que no todas las estaciones funcionan durante el mismo tiempo. Las estaciones son: Pista Silla, Viveros, Politecnico, Avda. Francia, Moli del Sol, Bulevard Sud, Valencia Centro, Conselleria Meteo, Nazaret Meteo, Puerto Moll Trans. Ponent, Puerto llit antic Turia, Valencia Olivereta y Puerto Valencia 
+<!-- Vemos que el día de la semana más repetido es el Sábado y el del mes es el 31, sin embargo sus frecuecnias son prácticamente 1/7 y 1/30 por lo que parece indicar que todos los días de la semana y del mes están en la misma proporción. Esto estaría enconcordancia con el hecho de que tenemos datos realmente diarios. -->
 
-```{r, echo=FALSE, include=FALSE}
+- *Estacion* es una variable de tipo factor cuyos niveles son las distintas estaciones meteorológicas donde se tomaron las mediciones de las variables numéricas, haciendo un total de 13 estaciones. Las estaciones son: Pista Silla, Viveros, Politecnico, Avda. Francia, Moli del Sol, Bulevard Sud, Valencia Centro, Conselleria Meteo, Nazaret Meteo, Puerto Moll Trans. Ponent, Puerto llit antic Turia, Valencia Olivereta y Puerto Valencia 
+
+<!-- La más repetida es la estación de Pista de Silla con una frecuencia de 0.16 > 1/13 = 0.077. Esto significa que es la estación que aparece en más días distintos, y es indicativo de que no todas las estaciones funcionan durante el mismo tiempo.  -->
+
+```{r, include=FALSE}
 unique(datos$Estacion)
 ```
 
-- *PM1, PM2.5, PM10* son variables de tipo numérico con datos sobre la concentración de materiales particuldos (PM) de menos de 1, 2.5 y 10 micrómetros de diámetro respectivamente. Pese a ser variables numéricas supuestamente continuas llama a la atención que no hay un gran número de niveles distintos comparado con el número de filas del del dataset (alrededor de 10 veces menos). También vemos que hay un gran número de datos faltantes, sobre todo para PM1 (más de un 70%) y esto puede explicar en parte que no haya tantos valores distintos. Sin embargo, también podría deberse a que quizá durante muchos días el nivel de concentración de esas partículas se mantiene constante (o al menos la sensibilidad del sensor que las mide no es capaz de medir tal diferencia). La gran cantidad de datos faltantes puede deberse a que las varaibles no se miden durante ciertos períodos de tiempo o en todas las estaciones.
+- *PM1, PM2.5, PM10* son variables de tipo numérico con datos sobre la concentración de materiales particuldos (PM) de menos de 1, 2.5 y 10 micrómetros de diámetro respectivamente.
 
-- *NO, NO2, NOx, O2, SO2, CO, NH3* son variables con datos sobre la concentración de estas moléculas inorgánicas consideradas contaminantes en el aire. Respecto a los óxidos de nitrógeno (NOx), estos son un grupo de gases compuestos por oxígeno y nitrógeno, es decir, NO y NO2 forman parte de este grupo y por lo tanto los valores de las variables estarán altamente correlacionados. La proporción de NA's en estas variables menor en este caso, alrededor del 20% con excepción del NH3 que presenta más de un 90% de datos faltantes. De nuevo el número de NA's puede deberse a los mismos motivos argumentados anteriormente y que comprobaremos más adelante en el análisis. Por otro lado, también tenemos unos pocos cientos de valores distintos para ser también variables numéricas continuas y esto puede deberse a las mismas causas argumentadas para los materiales particulados.
+<!-- Pese a ser variables numéricas supuestamente continuas llama a la atención que no hay un gran número de niveles distintos comparado con el número de filas del del dataset (alrededor de 10 veces menos). También vemos que hay un gran número de datos faltantes, sobre todo para PM1 (más de un 70%) y esto puede explicar en parte que no haya tantos valores distintos. Sin embargo, también podría deberse a que quizá durante muchos días el nivel de concentración de esas partículas se mantiene constante (o al menos la sensibilidad del sensor que las mide no es capaz de medir tal diferencia). La gran cantidad de datos faltantes puede deberse a que las varaibles no se miden durante ciertos períodos de tiempo o en todas las estaciones. -->
 
-- *C7H8, C6H6, C8H10* son variables con datos sobre la concentración de estas moléculas orgánicas también consideradas contaminantes en el aire. De nuevo estas variables numéricas y continuas presentan datos faltantes por encima del 90% y muchos menos niveles distintos que observacioness de las variables. Podrían ofrecerse los mismos argumentos para explicar estos hechos. El porcentaje similar de datos faltantes podría se debido a que estas variables se miden al vez (en las mismas estaciones y períodos de tiempo).
+- *NO, NO2, NOx, O2, SO2, CO, NH3* son variables con datos sobre la concentración de estas moléculas inorgánicas consideradas contaminantes en el aire. Respecto a los óxidos de nitrógeno (NOx), estos son un grupo de gases compuestos por oxígeno y nitrógeno, es decir, NO y NO2 forman parte de este grupo y por lo tanto los valores de las variables estarán altamente correlacionados. 
 
-- *Vel_viento, Dir_viento, Temperatura, Humidad_rel, Presion, Radiacion_solar, Precipitacion, Max_vel_viento* son variables numéricas con mediciones de estas distintas condiciones ambientales al momento de medir las concentraciones de moléculas contaminantes en el aire. Es interesante contar con estos datos para ver si influyen en los valores de contaminación. Estas variables presentan entre un 50-60% de datos faltantes que puede deberse a que no todas las estacione miden las condiciones ambientales.
+<!-- La proporción de NA's en estas variables menor en este caso, alrededor del 20% con excepción del NH3 que presenta más de un 90% de datos faltantes. De nuevo el número de NA's puede deberse a los mismos motivos argumentados anteriormente y que comprobaremos más adelante en el análisis. Por otro lado, también tenemos unos pocos cientos de valores distintos para ser también variables numéricas continuas y esto puede deberse a las mismas causas argumentadas para los materiales particulados. -->
 
-- *As, Ni, Cd, Pb* son variables numéricas con datos de otras concentraciones de gases y metales contaminantes en el aire. Todos estas variables presentaban el prefijo (ng/m3) indicando las unidades en que se mide sus concentraciones. El resto de datos de concentraciones no presentan las unidades lo cuál nos hace sospechar que auiás los datos de estas variables fueron medidas en conjunto. Esto también explicaría que todos tengan el mismo porcentaje de datos faltantes (entorno al 98%). De nuevo, en el análisis comprobaremos a qué puede deberse esta cantidad de datos faltantes.
+- *C7H8, C6H6, C8H10* son variables con datos sobre la concentración de estas moléculas orgánicas también consideradas contaminantes en el aire. 
+
+<!-- De nuevo estas variables numéricas y continuas presentan datos faltantes por encima del 90% y muchos menos niveles distintos que observacioness de las variables. Podrían ofrecerse los mismos argumentos para explicar estos hechos. El porcentaje similar de datos faltantes podría se debido a que estas variables se miden al vez (en las mismas estaciones y períodos de tiempo). -->
+
+- *Vel_viento, Dir_viento, Temperatura, Humidad_rel, Presion, Radiacion_solar, Precipitacion, Max_vel_viento* son variables numéricas con mediciones de estas distintas condiciones ambientales al momento de medir las concentraciones de moléculas contaminantes en el aire. 
+
+<!-- Es interesante contar con estos datos para ver si influyen en los valores de contaminación. Estas variables presentan entre un 50-60% de datos faltantes que puede deberse a que no todas las estacione miden las condiciones ambientales. -->
+
+- *As, Ni, Cd, Pb* son variables numéricas con datos de otras concentraciones de gases y metales contaminantes en el aire. 
+
+<!-- Todos estas variables presentaban el prefijo (ng/m3) indicando las unidades en que se mide sus concentraciones. El resto de datos de concentraciones no presentan las unidades lo cuál nos hace sospechar que auiás los datos de estas variables fueron medidas en conjunto. Esto también explicaría que todos tengan el mismo porcentaje de datos faltantes (entorno al 98%). De nuevo, en el análisis comprobaremos a qué puede deberse esta cantidad de datos faltantes. -->
 
 - *B(a)p* es una variable booleana que sólo presenta una observación. Elresto de datos son faltants y no podemos saber lo que representa esta variable.
 
 - *Fecha_creación* y *Fecha_baja* son variables de tipo *Date* que parecen estar relacionadas con la creacion del dataset y que no parecen aportar información sobre nuestros datos. *Fecha_creación* solo presenta dos entradas distintas y *Fecha_baja* sólo presenta NA's por lo que estas variables parecen prescindibles.
 
-Vamos a mantener sólo las variables que aporten alguna información relevante:
+
+
 ```{r}
 datos <-
   datos %>% select(
