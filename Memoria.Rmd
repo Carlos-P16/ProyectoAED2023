@@ -23,16 +23,7 @@ abstract: |
   Análisis exploratorio de un conjunto de datos sobre la calidad del aire de la ciudad de Valencia entre 2004 y 2022
 # back matter
 keywords: |
-  Contaminación, Valencia, datos, análisis
-abbreviations:
-  - short: MDPI
-    long: Multidisciplinary Digital Publishing Institute
-  - short: DOAJ
-    long: Directory of open access journals
-  - short: TLA
-    long: Three letter acronym
-  - short: LD 
-    long: linear dichroism
+  Contaminación, Valencia, datos, Análisis Exploratorio Datos
 endnotes: false
 output: 
   rticles::mdpi_article:
@@ -40,7 +31,7 @@ output:
 ---
 
 ```{r setup, include=FALSE, fig.align='left'}
-knitr::opts_chunk$set(echo = FALSE, warning=FALSE)
+knitr::opts_chunk$set(echo = FALSE, warning=FALSE, out.width = '80%')
 ```
 
 # Introducción
@@ -78,7 +69,7 @@ A lo largo del desarrollo del proyecto se irán planteando y resolviendo las pre
 ## Carga de librerías y datos
 
 ```{r}
-pacman::p_load(readr, lubridate, tidyr, dplyr, ggplot2, plotly, stats)
+pacman::p_load(readr, lubridate, tidyr, dplyr, ggplot2, plotly, stats, kableExtra)
 ```
 
 El primer paso es importar nuestro dataset. Para ello, en primer lugar abrimos (por ejemplo en un bloc de notas) el archivo _rvvcca.csv_ localizado en la carpeta data. De esta forma vemos el formato en el que están guardados los datos, lo cuál es importante para su correcta importación. Por ejemplo, vemos que el separador de las variables es ';', lo cuál debe ser especificado en la función _read_delim()_ de readr que usamos para la importación. Tembién definimos el formato con el que queremos importar ciertas columnas, como pueden ser las columnas de tipo fecha o algunos factores. 
@@ -130,9 +121,9 @@ datos <- datos %>% rename(Vel_viento = Velocidad_del_viento,
                           Max_vel_viento = Velocidad_maxima_del_viento)
 ```
 
-Para observar las características generales de nuestro dataset vamos a resumir en una tabla el tipo de cada variable *tyoe*, cuantos valores distintos tiene *levels*, su valor más frecuente *topLevel*, cuántas veces aparece *topCount*, y en qué proporción *topFreq* y por último la proporción de datos faltantes de cada variable *missFreq*:
+Para observar las características generales de nuestro dataset vamos a resumir en una tabla el tipo de cada variable *tyoe*, cuantos valores distintos tiene *levels*, su valor más frecuente *topLevel*, cuántas veces aparece *topCount*, y en qué proporción *topFreq* y por último la proporción de datos faltantes de cada variable *missFreq*. En el Anexo 1, en la Tabla \ref{tabla:anexo1}, encontramos las características generales obtenidas.
 
-```{r}
+```{r, include=FALSE}
 levels <- function(x) {
   as.character(length(unique(x)))
 }
@@ -167,7 +158,7 @@ sumario <-
     missFrec = ~ missFrec(.x)
   )
 
-datos %>%
+res <- datos %>%
   summarise(across(
     .cols = all_of(colnames(datos)),
     .fns = sumario,
@@ -180,6 +171,13 @@ datos %>%
            into =  c('variable', 'estadistica'),
            sep = '-') %>%
   pivot_wider(names_from = 'estadistica', values_from = 'valor')
+
+anexo1 <- kableExtra::kable(res, format = "latex", 
+             booktabs = TRUE, 
+             caption = "Sumario variables\\label{tabla:anexo1}", 
+             align = 'ccc', centering = FALSE,
+             table.envir = "table", position = "H") %>%
+  kableExtra::kable_styling(font_size=7)
 ```
 
 - *Id* es un identificador para cada una de las filas y no aporta ninguna información concreta.
@@ -192,9 +190,9 @@ datos <- arrange(datos, datos$Fecha)
 
 - *Dia_de_la_semana* y *Dia_del_mes* son variables de tipo factor que indican en que día de la semana y en qué día del mes se realiza la medida. Puede ser extraído a partir de *Fecha* usando las funciones _wday()_ y _day()_, de la librería _lubridate_. Vemos que el día de la semana más repetido es el Sábado y el del mes es el 31, sin embargo sus frecuecnias son prácticamente 1/7 y 1/30 por lo que parece indicar que todos los días de la semana y del mes están en la misma proporción. Esto estaría enconcordancia con el hecho de que tenemos datos realmente diarios.
 
-- *Estacion* es una variable de tipo factor cuyos niveles son las distintas estaciones meteorológicas donde se tomaron las mediciones de las variables numéricas, haciendo un total de 13 estaciones. La más repetida es la estación de Pista de Silla con una frecuencia de 0.16 > 1/13 = 0.077. Esto significa que es la estación que aparece en más días distintos, y es indicativo de que no todas las estaciones funcionan durante el mismo tiempo.
+- *Estacion* es una variable de tipo factor cuyos niveles son las distintas estaciones meteorológicas donde se tomaron las mediciones de las variables numéricas, haciendo un total de 13 estaciones. La más repetida es la estación de Pista de Silla con una frecuencia de 0.16 > 1/13 = 0.077. Esto significa que es la estación que aparece en más días distintos, y es indicativo de que no todas las estaciones funcionan durante el mismo tiempo. Las estaciones son: Pista Silla, Viveros, Politecnico, Avda. Francia, Moli del Sol, Bulevard Sud, Valencia Centro, Conselleria Meteo, Nazaret Meteo, Puerto Moll Trans. Ponent, Puerto llit antic Turia, Valencia Olivereta y Puerto Valencia 
 
-```{r}
+```{r, echo=FALSE, include=FALSE}
 unique(datos$Estacion)
 ```
 
@@ -243,26 +241,33 @@ datos <-
   mutate(datos, across(all_of(variables_numericas), reemplazo_especiales))
 ```
 
-Ya hemos visto que nuestras variables numéricas tienen un alto porcentaje de NA's:
+En el Anexo 1, en la Figura \ref{tabla:anexo2} podemos confirmar los elevados porcentajes NA's:
 
-```{r}
+```{r, include=FALSE}
 porc_na <- function(x) {
   100 * sum(is.na(x)) / length(x)
 }
-datos %>%
+res <- datos %>%
   summarise(across(.cols = all_of(colnames(datos)), .fns = porc_na)) %>%
   pivot_longer(cols = all_of(colnames(datos)),
                names_to = 'Variable',
                values_to = "Porcentaje NA's") %>%
   arrange(desc(`Porcentaje NA's`)) %>%
   mutate(`Porcentaje NA's` = round(`Porcentaje NA's`, digits = 2))
+
+anexo2 <- kableExtra::kable(res, format = "latex", 
+             booktabs = TRUE, 
+             caption = "Porcentaje NA's de las variables\\label{tabla:anexo2}", 
+             align = 'ccc', centering = FALSE,
+             table.envir = "table", position = "H") %>%
+  kableExtra::kable_styling(font_size=7)
 ```
 
 Como ya hemos comentado, pensamos que el elevado número de datos faltantes puede deberse a que algunas variables se miden en peródos de tiempo diferentes a las demás o a que no en todas las estaciones se miden todas las variables. Al unir los datos de las distintas estaciones por la fecha, se habrían dado lugar los NA's. Para comprobar esta teoría vamos a realizar una serie de representacions gráficas exploratorias.
 
 En primer lugar, creamos un mapa de calor para comprobar cuáles son las variables que mide cada estación y cuántos datos de dicha variable aporta cada estación.
 
-```{r mapa_calor, fig.width=6, fig.height=4, fig.align='left', fig.cap="\\label{fig:mapa_calor}"}
+```{r mapa_calor, fig.width=4.5, fig.height=3, fig.align='left', fig.cap="\\label{fig:mapa_calor}"}
 num_entradas <- function(x) {
   sum(!is.na(x))
 }
@@ -280,10 +285,10 @@ est_var <- datos %>%
 p <-
   ggplot(data = est_var, aes(x = Estacion, y = Variable, fill = Num_entradas)) +
   geom_tile() + scale_fill_gradient(low = "white", high = "blue") +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 9), 
-        axis.text.y = element_text(size = 8), 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 7), 
+        axis.text.y = element_text(size = 6), 
         legend.title = element_text(size = 7),
-        legend.text = element_text(size = 8))
+        legend.text = element_text(size = 6))
   
 
 show(p)
@@ -293,15 +298,17 @@ En el mapa de calor de la Figura \ref{fig:mapa_calor}, podemos ver qué variable
 
 Ahora queremos ver qué estaciones han estado activas a lo largo de los años:
 
-```{r estaciones_activas, fig.width=6, fig.height=4, fig.align='left', fig.cap="\\label{fig:estaciones_activas}"}
+```{r estaciones_activas, fig.width=4.5, fig.height=3, fig.align='left', fig.cap="\\label{fig:estaciones_activas}"}
 datos %>%
   mutate(ano = factor(year(Fecha))) %>%
   ggplot(aes(x = ano, fill = Estacion)) +
   geom_bar() +
   labs(x = 'Año') +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1),
-        legend.text = element_text(size = 7),
-        legend.title = element_text(size = 8))
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 7),
+        legend.text = element_text(size = 6),
+        legend.title = element_text(size = 7),
+        legend.key.width = unit(0.05, "cm"),
+        legend.key.height = unit(0.05, "cm"))
 ```
 
 Como podemos ver en la Figura \ref{fig:estaciones_activas}, desde 2004 hasta 2007 sólo tenemos datos de las estaciones de Pista de Silla y Viveros, que se mantienen actvas hasta 2022. Posteriormente, en los siguientes 5 años (2008-2012) se van añadiendo datos de otras estaciones como la del Politécnico, Av. de Francia, Molí del Sol, Boulevard Sur, Valencia Centro y Conselleria a razón casi de una nueva estación al año y que se mantienen hasta el final (2022). Desde 2013 hasta 2016 se siguen viendo las mismas estaciones y en los siguientes dos años (2017-2018) se añaden datos de la estación del Puerto de Valencia, de la que posteriormente dejamos de obtener datos. Finalmente, desde 2019 hasta 2022 se van añadiendo progresivamente cada año las estaciones de Nazaret, Puerto Molí Trans. Ponent, Puerto antic Turia y Valencia Olivereta. 2022 es el año donde tenemos datos de más estaciones distintas.
@@ -347,9 +354,9 @@ Variables de interés
   - Meteorológicas: Temperatura, Humedad, Presion, Velocidad viento, Direccion viento, Radiación solar, Precipitación
   - Calidad de vida: Ruido
 
-Comenzamos con un summary de las variables numéricas de interés para analizar las magnitudes de las variables y como se distribuyen los datos.
+Comenzamos con un summary de las variables numéricas de interés para analizar las magnitudes de las variables y como se distribuyen los datos. El resultado de este sumario lo podemos ver en el Anexo 1 Tabla \ref{tabla:anexo3}.
 
-```{r, fig.width=4, fig.height=4, fig.align='left'}
+```{r, include=FALSE, fig.width=4, fig.height=4, fig.align='left'}
 variables <-
   c(
     "Fecha",
@@ -409,7 +416,14 @@ datos <-
   datos[datos$Fecha > fecha_inicio &
           datos$Fecha < fecha_fin, variables]
 
-sapply(datos[-c(1, 2)], mystats)
+res <- sapply(datos[-c(1, 2)], mystats) %>% t
+
+anexo3 <- kableExtra::kable(res, format = "latex", 
+             booktabs = TRUE, 
+             caption = "Sumario de variables numericas\\label{tabla:anexo3}", 
+             align = 'ccc', centering = FALSE,
+             table.envir = "table", position = "H") %>%
+  kableExtra::kable_styling(font_size=7)
 ```
 
 Mediante el summary anterior podemos averiguar cuales son las unidades de medida empleadas contrastando con información externa, ya que en la fuente de los datos no se proporcionan.
@@ -589,7 +603,7 @@ Partiendo de las conclusiones obtenidas en el apartado de análisis de datos fal
 
 Mediante boxplots vamos a analizar como se distribuyen los datos respecto a las estaciones. En primer lugar los gases:
 
-```{r boxplot_est1, fig.width=5.5, fig.height=4, fig.align='left', fig.cap="\\label{fig:boxplot_est1}"}
+```{r boxplot_est1, fig.width=5.5, fig.height=3.3, fig.align='left', fig.cap="\\label{fig:boxplot_est1}"}
 # Gases
 datos_no_outliers %>%
   select(all_of(variables[2:8])) %>%
@@ -600,14 +614,14 @@ datos_no_outliers %>%
     values_drop_na = T
   ) %>%
   ggplot(aes(y = valor, fill = Estacion)) +
-  geom_boxplot(outlier.size = 1) +
+  geom_boxplot(outlier.size = 0.1, size = 0.2) +
   facet_wrap( ~ Variables, scales = "free_y") +
   theme(axis.text.x = element_blank(), legend.position = "none")
 ```
 
 En segundo lugar las variables meteorológicas:
 
-```{r boxplot_est2, fig.width=5.5, fig.height=4, fig.align='left', fig.cap="\\label{fig:boxplot_est2}"}
+```{r boxplot_est2, fig.width=5.5, fig.height=3.5, fig.align='left', fig.cap="\\label{fig:boxplot_est2}"}
 # Variables meteorológicas y ruido
 datos_no_outliers %>%
   select(all_of(variables[c(2, c(9:16))])) %>%
@@ -618,7 +632,7 @@ datos_no_outliers %>%
     values_drop_na = T
   ) %>%
   ggplot(aes(y = valor, fill = Estacion)) +
-  geom_boxplot(outlier.size = 1) +
+  geom_boxplot(outlier.size = 0.1, size = 0.2) +
   facet_wrap( ~ Variables, scales = "free_y") +
   theme(axis.text.x = element_blank(), legend.position = "none")
 ```
@@ -627,7 +641,7 @@ A partir de las Figuras \ref{fig:boxplot_est1} y \ref{fig:boxplot_est2} podemos 
 
 Ahora vamos a ver una sencilla evolución mediante boxplots de el valor de las variables a lo largo de los años. Comenzamos con los gases:
 
-```{r boxplot_anos1, fig.width=5.5, fig.height=4, fig.align='left', fig.cap="\\label{fig:boxplot_anos1}"}
+```{r boxplot_anos1, fig.width=5.5, fig.height=3.3, fig.align='left', fig.cap="\\label{fig:boxplot_anos1}"}
 # Gases
 datos_no_outliers %>%
   select(all_of(variables[c(1, 3:8)])) %>%
@@ -639,14 +653,14 @@ datos_no_outliers %>%
     values_drop_na = T
   ) %>%
   ggplot(aes(y = valor, fill = ano)) +
-  geom_boxplot(outlier.size = 1) +
+  geom_boxplot(outlier.size = 0.1, size = 0.2) +
   facet_wrap( ~ Variables, scales = "free_y") +
   theme(axis.text.x = element_blank(), legend.position = "none")
 ```
 
 En la Figura \ref{fig:boxplot_anos1} se puede apreciar una leve reducción a lo largo de los años de los gases considerados como contaminantes a excepción del SO2 que parece mantenerse constante. Por otro lado vemos un leve aumento del ozono (O3), por lo que podría existir una relación con la disminución de gases contaminantes. Continuamos con las variables meteorológicas:
 
-```{r boxplot_anos2, fig.width=5.5, fig.height=4, fig.align='left', fig.cap="\\label{fig:boxplot_anos2}"}
+```{r boxplot_anos2, fig.width=5.5, fig.height=3.5, fig.align='left', fig.cap="\\label{fig:boxplot_anos2}"}
 # Gases
 datos_no_outliers %>%
   select(all_of(variables[c(1, 9:16)])) %>%
@@ -658,7 +672,7 @@ datos_no_outliers %>%
     values_drop_na = T
   ) %>%
   ggplot(aes(y = valor, fill = ano)) +
-  geom_boxplot(outlier.size = 1) +
+  geom_boxplot(outlier.size = 0.1, size = 0.2) +
   facet_wrap( ~ Variables, scales = "free_y") +
   theme(axis.text.x = element_blank(), legend.position = "none")
 ```
@@ -697,7 +711,7 @@ datos_limpios <- datos_no_outliers %>%
   mutate(across(all_of(columnas_numericas), reemplazo_especiales)) %>%
   ungroup
 
-100 * sum(complete.cases(datos_limpios)) / nrow(datos_limpios)
+#100 * sum(complete.cases(datos_limpios)) / nrow(datos_limpios)
 
 datos_limpios <- datos_limpios[complete.cases(datos_limpios), ]
 ```
@@ -707,7 +721,7 @@ La correlación puede tener valores en el rango [-1,1]. Siendo -1 el indicador d
 
 Esto puede darnos información para reflexionar sobre la naturaleza y comportamiento de los datos.
 
-```{r, eval=FALSE}
+```{r, include=FALSE}
 library(GGally)
 
 # Correlacion Pearson
@@ -721,11 +735,14 @@ corr_S <- datos_limpios[3:15] %>%
   na.omit %>%
   cor(method = 'spearman')
 corr_S
+```
 
+
+```{r correlaciones1, fig.width=5.5, fig.height=4, fig.align='left', fig.cap="\\label{fig:correlaciones1}"}
 ggcorr(datos_limpios[3:15])
 ```
 
-Basándonos en las observaciones, podemos extraer las siguientes conclusiones:
+Basándonos en la Figura \ref{fig:correlaciones1}, podemos extraer las siguientes conclusiones:
 
 + Existe una correlación negativa importante entre NOs y Ozono. Esto podría deberse a que la presencia de óxidos de nitrógeno puede contribuir a la degradación del ozono en la atmósfera, lo que tiene implicaciones para la calidad del aire, la contaminación y el efecto hivernadero.
 
@@ -735,9 +752,9 @@ Basándonos en las observaciones, podemos extraer las siguientes conclusiones:
 
 + Correlación entre Radiación Solar y Ozono. Esto tiene sentido ya que la capa de ozono filtra la mayor parte de la radiación ultravioleta proveniente del sol, por lo tanto están muy relacionados entre ellos.
 
-También hemos filtrado las correlaciones para mostrar únicamente las mayores correlaciones. Hemos puesto un umbral para escoger solo las correlaciones que sean mayores a 0.7 para visualizar las variables muy correlacionadas (eliminando las correlaciones de una variable con ella misma). Hemos puesto el ejemplo en el que las correlaciones son directas para la siguiente visualización. Podría realizarse esto para las correlaciones inversas.
+<!-- También hemos filtrado las correlaciones para mostrar únicamente las mayores correlaciones. Hemos puesto un umbral para escoger solo las correlaciones que sean mayores a 0.7 para visualizar las variables muy correlacionadas (eliminando las correlaciones de una variable con ella misma). Hemos puesto el ejemplo en el que las correlaciones son directas para la siguiente visualización. Podría realizarse esto para las correlaciones inversas. -->
 
-```{r, eval=FALSE}
+```{r correlaciones2, eval=FALSE, fig.width=5.5, fig.height=4, fig.align='left', fig.cap="\\label{fig:correlaciones2}"}
 df <- cor(na.omit(datos_limpios[3:15])) %>%
   as.data.frame(.)
 
@@ -767,9 +784,11 @@ ggplot(correlaciones,
 
 ## Detección y eliminación de outliers con métodos multivariable
 
+EXPLICAR
+
 En este apartado, trabajaremos con el dataframe de datos que contiene la imputación de NA.
 
-```{r}
+```{r, include=FALSE}
 distancia_mahalanobis <- function(x) {
   media = colMeans(x)
   S = cov(x)
@@ -811,7 +830,7 @@ Además, las estaciones deberían ser las más céntricas, ya que ahí el efecto
 + Olivereta
 
 
-```{r}
+```{r pregunta1_1, fig.width=4, fig.height=3, fig.align='left', fig.cap="\\label{fig:pregunta1_1}"}
 datos_mensuales <- datos[c("Fecha", "SO2", "NO2", "Estacion")] %>%
   filter(Estacion %in% c("Avda. Francia", "Bulevard Sud", "Valencia Centro", "Olivereta")) %>%
   mutate(ano = year(Fecha), mes = month(Fecha)) %>%
@@ -837,7 +856,10 @@ ggplot(data = datos_mensuales, aes(
                      limits = c(1, 12)) +
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
 
+
+```{r pregunta1_2, fig.width=4, fig.height=3, fig.align='left', fig.cap="\\label{fig:pregunta1_2}"}
 ggplot(data = datos_mensuales, aes(
   x = mes,
   y = media_NO2,
@@ -856,7 +878,7 @@ ggplot(data = datos_mensuales, aes(
 
 NOTA: El gráfico de NO2 se ve mucho mejor la reducción cuando se observan todas las estaciones.
 
-Si bien no se observan cambios significativos en los niveles de SO2, en los niveles de NO2 sí que podemos observar una evolución.
+Si bien, en la Figura \ref{fig:pregunta1_1} no se observan cambios significativos en los niveles de SO2, en la Figura \ref{fig:pregunta1_2} sí que podemos observar una evolución en los niveles de NO2.
 
 Respecto al NO2 si que se puede apreciar una reducción a lo largo de los años. Con unos niveles más bajos especialmente en los últimos 3 años. Además se puede apreciar una periodicidad, concretamente una reducción de los niveles de NO2 en los meses de verano. Esto coincide con el momento del año donde menos gente vive en la ciudad y por lo tanto menos tráfico hay. En conclusión parece que las medidas de transporte que se han tomado en la ciudad han influenciado en la reducción de gases contaminantes.
 
@@ -864,7 +886,7 @@ Respecto al NO2 si que se puede apreciar una reducción a lo largo de los años.
 
 Aqui observamos si, en general la calidad del aire se ve influenciada por el día de la semana. Queremos sobre todo fijarnos en la distinción entre días laborables y de descanso. Podemos comprobar cómo, efectivamente, existe una disminución en los gases contaminantes los días festivos con respecto a los días laborables.
 
-```{r}
+```{r pregunta2, fig.width=4, fig.height=3, fig.align='left', fig.cap="\\label{fig:pregunta2}"}
 gases_interes <- c("NO", "NO2", "NOx", "SO2", "CO")
 
 datos_semanales <- datos_limpios %>%
@@ -902,9 +924,9 @@ ggplot(datos_combinados, aes(x = Gas, y = Valor, fill = Tipo)) +
 
 ## Evolución de la contaminación sonora a lo largo de los años
 
-Podemos observar un incremento visibleen la medición del ruido medio a lo largo de los años. Obviamente, en los datos del 2020 podemos observar un decrecimiento de los mismos, producto del parón de la pandemia, pero vemos cómo continúa aun así subiendo.
+En la Figura \ref{fig:pregunta3_1} podemos observar un incremento visibleen la medición del ruido medio a lo largo de los años. Obviamente, en los datos del 2020 podemos observar un decrecimiento de los mismos, producto del parón de la pandemia, pero vemos cómo continúa aun así subiendo.
 
-```{r}
+```{r pregunta3_1, fig.width=4, fig.height=3, fig.align='left', fig.cap="\\label{fig:pregunta3_1}"}
 datos_ruido <- datos_limpios[c("Fecha", "Ruido")] %>%
   mutate(Ano = year(Fecha)) %>%
   select(-Fecha) %>%
@@ -920,7 +942,7 @@ ggplot(datos_ruido, aes(x = Ano, y = Media_Ruido)) +
 
 Ahora comprobaremos si este ruido medido depende de la zona dónde la midamos. Para ello, vamos a observar el comportamiento de la varianza de la media de los ruidos agrupados por estaciones. Calcularemos la desviación para cada año y, finalmente, la media de todas las desviaciones Si el valor es pequeño, entonces podemos afirmar que el incremento en el ruido no es de ciertas zonas, sino generalizado.
 
-```{r}
+```{r pregunta3_2, fig.width=4, fig.height=3, fig.align='left', fig.cap="\\label{fig:pregunta3_2}"}
 datos_ruido_estaciones <-
   datos_limpios[c("Fecha", "Estacion", "Ruido")] %>%
   mutate(Ano = year(Fecha)) %>%
@@ -934,17 +956,20 @@ ggplot(datos_ruido_estaciones, aes(x = Ano, y = Desviacion_por_ano)) +
   geom_line() +
   labs(x = "Año", y = "Desviacion de ruido por estación") +
   theme_minimal()
+```
 
+
+```{r include=FALSE}
 mean(datos_ruido_estaciones$Desviacion_por_ano)
 ```
 
-Podemos observar que, para los valores que tratamos (sobre 50 y 60), una desviación del 0.3 es despreciable.
+En la Figura \ref{fig:pregunta3_2} podemos observar que, para los valores que tratamos (sobre 50 y 60), una desviación del 0.3 es despreciable.
 
 ## Evolución de la temperatura a lo largo de los años
 
-También se puede observar el aumento generalizado de la temperatura a lo largo de los años. Es curioso que, pese a que en el mundo existe un aumento generalizado de la temperatura, en Valencia estuvo bajando esta tendencia y no es hasta el año 2017 que comenzaron a subir de nuevo. Pese a lo mencionado, bastante visible el hecho de que nos encontramos en una tendencia creciente.
+En la Figura \ref{fig:pregunta4} se puede observar el aumento generalizado de la temperatura a lo largo de los años. Es curioso que, pese a que en el mundo existe un aumento generalizado de la temperatura, en Valencia estuvo bajando esta tendencia y no es hasta el año 2017 que comenzaron a subir de nuevo. Pese a lo mencionado, bastante visible el hecho de que nos encontramos en una tendencia creciente.
 
-```{r}
+```{r pregunta4, fig.width=4, fig.height=3, fig.align='left', fig.cap="\\label{fig:pregunta4}"}
 datos_temperatura <- datos_limpios[c("Fecha", "Temperatura")] %>%
   mutate(Ano = year(Fecha)) %>%
   select(-Fecha) %>%
@@ -965,9 +990,9 @@ ggplot(datos_temperatura, aes(x = Ano, y = Media_Temperatura)) +
 
 Cuando contestamos a la primera pregunta, nos centramos en gases que soltaban los carburantes y solo observamos las estaciones más cercanas al centro de Valencia. En esta ocasión, estudiaremos el comportamiento de todos los gases contaminantes en todas las estaciones.
 
-Esta vez podemos observar que se produjo un pico de todos los gases en el año 2016, pero que por lo general las medidas de estos se han mantenido bastante estables o incluso decrecientes en el tiempo.
+Esta vez, en la Figrua \ref{fig:pregunta5} podemos observar que se produjo un pico de todos los gases en el año 2016, pero que por lo general las medidas de estos se han mantenido bastante estables o incluso decrecientes en el tiempo.
 
-```{r}
+```{r pregunta5, fig.width=4, fig.height=3, fig.align='left', fig.cap="\\label{fig:pregunta5}", fig.pos='H', warning=FALSE}
 datos_gases <-
   datos_limpios[c("Fecha", "NO", "NO2", "NOx", "SO2", "CO")] %>%
   mutate(Ano = year(Fecha)) %>%
@@ -986,4 +1011,17 @@ ggplot(datos_gases, aes(x = Ano, y = Media, color = Gas)) +
   theme_minimal()
 ```
 
+# Anexo 1 {#Anexo}
+
+```{r anexo1, fig.pos='H'}
+anexo1
+```
+
+```{r anexo2, fig.pos='H'}
+anexo2
+```
+
+```{r anexo3, fig.pos='H'}
+anexo3
+```
 
