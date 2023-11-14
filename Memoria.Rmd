@@ -940,6 +940,8 @@ mean(datos_ruido_estaciones$Desviacion_por_ano)
 
 Podemos observar que, para los valores que tratamos (sobre 50 y 60), una desviación del 0.3 es despreciable.
 
+Lo que sí que podemos determinar, gracias a contrastar estos datos con los de la gráfica boxplot \ref{boxplot_anos2}, es que la evolución en el ruido no viene dada por una tendencia natural. Más bien, el gráfico nos indica que existe un aumento significativo de ruido pero en días concretos.
+
 ## Evolución de la temperatura a lo largo de los años
 
 También se puede observar el aumento generalizado de la temperatura a lo largo de los años. Es curioso que, pese a que en el mundo existe un aumento generalizado de la temperatura, en Valencia estuvo bajando esta tendencia y no es hasta el año 2017 que comenzaron a subir de nuevo. Pese a lo mencionado, bastante visible el hecho de que nos encontramos en una tendencia creciente.
@@ -963,9 +965,15 @@ ggplot(datos_temperatura, aes(x = Ano, y = Media_Temperatura)) +
 
 ## Cómo se ha comportado la contaminación a lo largo de los años
 
-Cuando contestamos a la primera pregunta, nos centramos en gases que soltaban los carburantes y solo observamos las estaciones más cercanas al centro de Valencia. En esta ocasión, estudiaremos el comportamiento de todos los gases contaminantes en todas las estaciones.
+Cuando contestamos a la primera pregunta, nos centramos en gases que soltaban los carburantes y solo observamos las estaciones más cercanas al centro de Valencia. En esta ocasión, estudiaremos el comportamiento de todos los gases contaminantes en todas las estaciones. Gracias a superponer todas estas evoluciones en un mismo gráfico, podemos tomar perspectiva y comparar el comportamiento entre los diferentes gases.
 
 Esta vez podemos observar que se produjo un pico de todos los gases en el año 2016, pero que por lo general las medidas de estos se han mantenido bastante estables o incluso decrecientes en el tiempo.
+
+Con las gráficas de la figura \ref{boxplot_anos1} podemos contrastar la información que nos otorga esta gráfica. Por ejemplo: 
+
++ El CO sí parece decrecer en el últimio año. Sin embargo, por los outliers y el rango de valores que se maneja, en el gráfico presente puede no apreciarse esta evolución.
++ Por ejemplo, en evoluciones como la del NO2 podemos reforzar la fiabilidad observando cómo la tendencia en su representación de boxplot es similar. Incluso parece haber consistencia en los datos que la regla boxplot marca como outliers.
++ En el gas SO2, observamos una tendencia estable a lo largo de los años. No obstante, comparando con su contraparte representada en boxplot ganamos la información de que el gas ha ido ganando estabilidad, habiendo cada vez menos outliers y más cercanos a los valores comunes conforme ha avanzado el tiempo.
 
 ```{r}
 datos_gases <-
