@@ -817,21 +817,11 @@ datos_limpios_sin_outliers <- datos_limpios[-instancias_outliers, ]
 
 ## Influencia de carril bici
 
-Para estudiar la influencia de un carril bici por el centro de Valencia, estudiaremos la evolución de gases contaminantes en diversas estaciones de la ciudad. Mediremos la evolución de los gases:
+Para estudiar la influencia de un carril bici por el centro de Valencia, estudiaremos la evolución de gases contaminantes en diversas estaciones de la ciudad. Mediremos la evolución de los gases SO2 y NO2, relacionados con la combustión de carburantes fósiles, el tráfico rodado y las emisiones de determinadas industrias y grandes instalaciones de combustión.
 
-+ SO2: Originado sobre todo durante la combustión de carburantes fósiles.
-+ NO2: Es un contaminante atmosférico cuyas fuentes fundamentales son el tráfico rodado, así como las emisiones de determinadas industrias y grandes instalaciones de combustión.
+Además, las estaciones deberían ser las más céntricas, ya que ahí el efecto del carril bici y las restricciones de acceso deberían hacerse más notables. Observaremos las siguientes estaciones: Avda. Francia, Bulevard Sud, Valencia Centro y Olivereta
 
-Además, las estaciones deberían ser las más céntricas, ya que ahí el efecto del carril bici y las restricciones de acceso deberían hacerse más notables. Observaremos las siguientes estaciones:
-
-+ Avda. Francia
-+ Bulevard Sud
-+ Valencia Centro
-+ Olivereta
-
-Si bien, en la Figura \ref{fig:pregunta1_1} no se observan cambios significativos en los niveles de SO2, en la Figura \ref{fig:pregunta1_2} sí que podemos observar una evolución en los niveles de NO2.
-
-Respecto al NO2 si que se puede apreciar una reducción a lo largo de los años. Con unos niveles más bajos especialmente en los últimos 3 años. Además se puede apreciar una periodicidad, concretamente una reducción de los niveles de NO2 en los meses de verano. Esto coincide con el momento del año donde menos gente vive en la ciudad y por lo tanto menos tráfico hay. En conclusión parece que las medidas de transporte que se han tomado en la ciudad han influenciado en la reducción de gases contaminantes.
+Si bien, en la Figura \ref{fig:pregunta1_1} no se observan cambios significativos en los niveles de SO2, en la Figura \ref{fig:pregunta1_2} sí que podemos observar una evolución en los niveles de NO2 a lo largo de los años. Los niveles más bajos se dan en los últimos 3 años. Además, se puede apreciar una reducción periódica de los niveles de NO2 en los meses de verano, que coincide con el momento del año donde menos gente vive en la ciudad y menos tráfico hay. En conclusión parece que las medidas de transporte que se han tomado en la ciudad han influenciado en la reducción de gases contaminantes.
 
 
 ```{r pregunta1_1, fig.width=4, fig.height=3, fig.align='left', fig.cap="\\label{fig:pregunta1_1}"}
