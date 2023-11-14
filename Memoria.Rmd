@@ -359,7 +359,7 @@ datos %>%
 
 # Análisis univariante
 
-En esta sección analizaremos las variables de forma individual con el objetivo de conocer sus magnitudes, es decir, las unidades de medida que representan, y como se distribuyen. 
+<!-- En esta sección analizaremos las variables de forma individual con el objetivo de conocer sus magnitudes, es decir, las unidades de medida que representan, y como se distribuyen.  -->
 <!-- Como se ha mencionado previamente, escogemos los datos que comienzan en 2012, concretamente cunado se empiezan a tomar datos de la precipitación, y los datos previos a 2023, concretamente cuando se dejan de tomar los oxidos de nitrogeno. -->
 
 <!-- Variables de interés -->
@@ -369,7 +369,7 @@ En esta sección analizaremos las variables de forma individual con el objetivo 
 <!--   - Meteorológicas: Temperatura, Humedad, Presion, Velocidad viento, Direccion viento, Radiación solar, Precipitación -->
 <!--   - Calidad de vida: Ruido -->
 
-Comenzamos con un summary de las variables numéricas de interés para analizar las magnitudes de las variables y como se distribuyen los datos. El resultado de este sumario lo podemos ver en el Anexo 1 Tabla \ref{tabla:anexo3}. Mediante el sumario anterior podemos averiguar cuales son las unidades de medida empleadas contrastando con información externa, ya que en la fuente de los datos no se proporcionan.
+El resultado de hacer el sumario de los datos lo podemos ver en el Anexo 1 Tabla \ref{tabla:anexo3}. Podemos averiguar cuales son las unidades de medida empleadas contrastando con información externa.
 
   - Gases (NO, NO2, NOx, SO2, CO, O3): microgramos por metro cubico ($\mu$g/m3)
   - Temperatura: grados centígrados (Cº)
@@ -504,9 +504,7 @@ datos[c(2, c(9:16))] %>%
 
 ## Detección y eliminación de outliers con métodos univariante
 
-A continuación, procederemos a detectar y eliminar outliers. Primero, comenzaremos definiendo diferentes funciones univariantes (tresSigma, hampel, boxplot y percentiles). Comprobaremos el funcionamiento de los métodos de detección de outliers sobre todas las variables numéricas y observaremos las diferencias. En la Figura \ref{fig:outliers_univ} podemos observar cómo la regla del percentil siempre elimina datos, esto es debido a la naturaleza de la regla, la cual siempre eliminará el 2.5% que quede por arriba y el 2.5% por abajo. Podemos usar esto como comparador de el resto de métodos.
-
-El resto de métodos, en la mayoría de ocasiones quedan por debajo del criterio del percentil. No obstante, es visible el agresivo comportamiento de la regla boxplot y el excesivamente poco agresivo método de la regla 3-sigma. En cuanto al comportamiento de la regla de Hampel, parece comportarse como una versión agresiva pero manteniendo la prudencia de la regla 3-sigma.
+Compararemos el funcionamiento de lass reglas tresSigma, hampel, boxplot y percentiles. En la Figura \ref{fig:outliers_univ} podemos observar cómo la regla del percentil siempre elimina datos (el 2.5% superior e inferior). Podemos usar esto como comparador de el resto de métodos. Es visible el agresivo comportamiento de la regla boxplot y el excesivamente poco agresivo método de la regla 3-sigma.
 
 <!-- Pese a que, según las matemáticas, cuantos más datos tenemos, más se parece la distribución de los mismos a una Gaussiana, hemos visto anteriormente que no todos los datos siguen esta distribución. -->
 
@@ -606,11 +604,11 @@ datos_no_outliers <- datos %>%
 
 # Analisis bivariante
 
-Partiendo de las conclusiones obtenidas en el apartado de análisis de datos faltantes, nos parece interesante ver si existe alguna influencia en el valor de la variable por parte de la estación de la que proviene. En caso de no existir una influencia considerable podemos utilizar los valores obtenidos en otras estaciones para imputar otros. Finalmente comprobaremos si año influye en el valor de la variable, para ver si a lo largo del tiempo ha ocurrido algún cambio considerable.
+<!-- Partiendo de las conclusiones obtenidas anteriormente, nos parece interesante ver si existe alguna influencia en el valor de la variable por parte de la estación de la que proviene. En caso de no existir una influencia considerable podemos utilizar los valores obtenidos en otras estaciones para imputar otros. Finalmente comprobaremos si año influye en el valor de la variable, para ver si a lo largo del tiempo ha ocurrido algún cambio considerable. -->
 
 Mediante boxplots vamos a analizar como se distribuyen los datos respecto a las estaciones. En la figura \ref{boxplot_est1} se observan las referentes a gases y en la figura \ref{boxplot_est2} el resto.
 
-A partir de ambas figuras podemos concluir con que generalmente la estación no influye en los valores de las variables. Esta información nos es útil para la imputación de NA's, ya que podemos emplear la media de las medidas obtenidas por otras estaciones. Respecto al ruido, el cual únicamente se mide en las estaciones de "Pista Silla" y "Viveros" si parece tener un valor un poco mayor en "Pista Silla". Esto puede deberse a que esta estación se encuentra en un lugar con mayor tránsito de coches.
+A partir de ambas figuras podemos concluir con que generalmente la estación no influye en los valores de las variables. Esta información nos es útil para la imputación de NA's, ya que podemos emplear datos de otras estaciones.
 
 ```{r boxplot_est1, fig.width=5.5, fig.height=3.3, fig.align='left', fig.cap="\\label{fig:boxplot_est1}"}
 # Gases
@@ -924,9 +922,9 @@ ggplot(datos_combinados, aes(x = Gas, y = Valor, fill = Tipo)) +
 
 ## Evolución de la contaminación sonora a lo largo de los años
 
-En la Figura \ref{fig:pregunta3_1} podemos observar un incremento visibleen la medición del ruido medio a lo largo de los años. Obviamente, en los datos del 2020 podemos observar un decrecimiento de los mismos, producto del parón de la pandemia, pero vemos cómo continúa aun así subiendo.
+En la Figura \ref{fig:pregunta3_1} podemos observar un incremento en el ruido medio a lo largo de los años. En los datos del 2020 podemos observar un decrecimiento de los mismos. Podría estudiarse si este efecto es debido al Covid-19.
 
-Con la figura \ref{fig:pregunta3_2} comprobaremos si este ruido medido depende de la zona dónde la midamos. Para ello, vamos a observar el comportamiento de la varianza de la media de los ruidos agrupados por estaciones. Calcularemos la desviación para cada año y, finalmente, la media de todas las desviaciones Si el valor es pequeño, entonces podemos afirmar que el incremento en el ruido no es de ciertas zonas, sino generalizado. Podemos observar que, para los valores que tratamos (sobre 50 y 60), una desviación del 0.3 es despreciable. Lo que sí que podemos determinar, gracias a contrastar estos datos con los de la gráfica boxplot \ref{boxplot_anos2}, es que la evolución en el ruido no viene dada por una tendencia natural. Más bien, el gráfico nos indica que existe un aumento significativo de ruido pero en días concretos.
+Con la figura \ref{fig:pregunta3_2} comprobaremos si este ruido medido depende de la zona dónde la midamos. Podemos observar que la desviación es despreciaable. Sí que podemos determinar, gracias a contrastar estos datos con los de la gráfica boxplot \ref{boxplot_anos2}, es que la evolución en el ruido no viene dada por una tendencia natural. Más bien, el gráfico nos indica que existe un aumento significativo de ruido en días concretos.
 
 ```{r pregunta3_1, fig.width=4, fig.height=3, fig.align='left', fig.cap="\\label{fig:pregunta3_1}"}
 datos_ruido <- datos_limpios[c("Fecha", "Ruido")] %>%
@@ -986,15 +984,13 @@ ggplot(datos_temperatura, aes(x = Ano, y = Media_Temperatura)) +
 
 ## Cómo se ha comportado la contaminación a lo largo de los años
 
-Cuando contestamos a la primera pregunta, nos centramos en gases que soltaban los carburantes y solo observamos las estaciones más cercanas al centro de Valencia. En esta ocasión, estudiaremos el comportamiento de todos los gases contaminantes en todas las estaciones. Gracias a superponer todas estas evoluciones en un mismo gráfico, podemos tomar perspectiva y comparar el comportamiento entre los diferentes gases.
+Estudiaremos el comportamiento de todos los gases contaminantes en todas las estaciones. Gracias a superponer todas estas evoluciones en un mismo gráfico, podemos tomar perspectiva y comparar el comportamiento entre los diferentes gases.
 
-Esta vez, en la Figrua \ref{fig:pregunta5} podemos observar que se produjo un pico de todos los gases en el año 2016, pero que por lo general las medidas de estos se han mantenido bastante estables o incluso decrecientes en el tiempo.
+Esta vez, en la Figrua \ref{fig:pregunta5} podemos que en general las medidas de estos se han mantenido bastante estables o decrecientes en el tiempo. Con las gráficas de la figura \ref{boxplot_anos1} podemos contrastar la información que nos otorga esta gráfica. Por ejemplo: 
 
-Con las gráficas de la figura \ref{boxplot_anos1} podemos contrastar la información que nos otorga esta gráfica. Por ejemplo: 
-
-+ El CO sí parece decrecer en el últimio año. Sin embargo, por los outliers y el rango de valores que se maneja, en el gráfico presente puede no apreciarse esta evolución.
++ El CO sí parece decrecer en el último año. Sin embargo, por los outliers y el rango de valores que se maneja, en el gráfico presente puede no apreciarse esta evolución.
 + Por ejemplo, en evoluciones como la del NO2 podemos reforzar la fiabilidad observando cómo la tendencia en su representación de boxplot es similar. Incluso parece haber consistencia en los datos que la regla boxplot marca como outliers.
-+ En el gas SO2, observamos una tendencia estable a lo largo de los años. No obstante, comparando con su contraparte representada en boxplot ganamos la información de que el gas ha ido ganando estabilidad, habiendo cada vez menos outliers y más cercanos a los valores comunes conforme ha avanzado el tiempo.
++ En el gas SO2, observamos una tendencia estable a lo largo de los años. No obstante, comparando con su contraparte representada en boxplot ganamos la información de que el gas ha ido ganando estabilidad, habiendo cada vez menos outliers con el paso del tiempo.
 
 
 ```{r pregunta5, fig.width=4, fig.height=3, fig.align='left', fig.cap="\\label{fig:pregunta5}", fig.pos='H', warning=FALSE}
