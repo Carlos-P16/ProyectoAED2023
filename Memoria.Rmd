@@ -38,9 +38,9 @@ knitr::opts_chunk$set(echo = FALSE, warning=FALSE, out.width = '80%')
 
 En el presente informe planteamos el análisis exploratorio de un conjunto de datos sobre la calidad del aire de la ciudad de Valencia entre 2004 y 2022. El dataset empleado continene observaciones obtenidas de distintas estaciones de la red de vigilancia de Valencia. Las observaciones están compuestas por variables respectivas a diversas moleculas y elementos presentes en el aire junto a otras de tipo meteorológico como la velocidad del viento, la temperatura, etc.
 
-El procedimiento a seguir comenzará con la correcta importación del dataset, a lo que seguirá un previo estudio de los datos con el objetivo de conocer la estructura del dataset y sus peculiaridades. Continuaremos con la preparación de los datos para resolver las preguntas planteadas y escogerán las variables de interés y los periodos temporales sobre los que se realizará el análisis univariante y bivariante, por otro lado también se gestionarán los outliers y datos faltantes.
+<!-- El procedimiento a seguir comenzará con la correcta importación del dataset, a lo que seguirá un previo estudio de los datos con el objetivo de conocer la estructura del dataset y sus peculiaridades. Continuaremos con la preparación de los datos para resolver las preguntas planteadas y escogerán las variables de interés y los periodos temporales sobre los que se realizará el análisis univariante y bivariante, por otro lado también se gestionarán los outliers y datos faltantes. -->
 
-Una vez preparado el dataset y estudiadas sus variables, procederemos a responder a las preguntas planteadas mediante diversas metodologías. Todo el proceso irá acompañado de las explicaciones pertinentes y finalizaremos con una conclusión del trabajo realizado.
+<!-- Una vez preparado el dataset y estudiadas sus variables, procederemos a responder a las preguntas planteadas mediante diversas metodologías. Todo el proceso irá acompañado de las explicaciones pertinentes y finalizaremos con una conclusión del trabajo realizado. -->
 
 
 # Objetivos
@@ -199,13 +199,14 @@ datos <- arrange(datos, datos$Fecha)
 
 <!-- Vemos que el día de la semana más repetido es el Sábado y el del mes es el 31, sin embargo sus frecuecnias son prácticamente 1/7 y 1/30 por lo que parece indicar que todos los días de la semana y del mes están en la misma proporción. Esto estaría enconcordancia con el hecho de que tenemos datos realmente diarios. -->
 
-- *Estacion* es una variable de tipo factor cuyos niveles son las distintas estaciones meteorológicas donde se tomaron las mediciones de las variables numéricas, haciendo un total de 13 estaciones. Las estaciones son: Pista Silla, Viveros, Politecnico, Avda. Francia, Moli del Sol, Bulevard Sud, Valencia Centro, Conselleria Meteo, Nazaret Meteo, Puerto Moll Trans. Ponent, Puerto llit antic Turia, Valencia Olivereta y Puerto Valencia 
+- *Estacion* es una variable de tipo factor cuyos niveles son las distintas estaciones meteorológicas donde se tomaron las mediciones de las variables numéricas, haciendo un total de 13 estaciones. 
+<!-- Las estaciones son: Pista Silla, Viveros, Politecnico, Avda. Francia, Moli del Sol, Bulevard Sud, Valencia Centro, Conselleria Meteo, Nazaret Meteo, Puerto Moll Trans. Ponent, Puerto llit antic Turia, Valencia Olivereta y Puerto Valencia  -->
 
 <!-- La más repetida es la estación de Pista de Silla con una frecuencia de 0.16 > 1/13 = 0.077. Esto significa que es la estación que aparece en más días distintos, y es indicativo de que no todas las estaciones funcionan durante el mismo tiempo.  -->
 
-```{r, include=FALSE}
-unique(datos$Estacion)
-```
+<!-- ```{r, include=FALSE} -->
+<!-- unique(datos$Estacion) -->
+<!-- ``` -->
 
 - *PM1, PM2.5, PM10* son variables de tipo numérico con datos sobre la concentración de materiales particuldos (PM) de menos de 1, 2.5 y 10 micrómetros de diámetro respectivamente.
 
@@ -252,7 +253,7 @@ datos <-
 
 En esta sección, previamente al análisis univariante y bivariante de las variables, vamos a realizar un análisis de la estructura del dataset. El dataset parece estar compuesto por la unión de un conjunto datasets, posiblemente por las distintas estaciones de las que provienen los datos. Con el objetivo de obtener un conjunto de datos consistente, analizaremos el porcentaje de NA's que hay por cada variable, luego veremos que datos proporcionan las estaciones y con que frecuencia, también comprobaremos cuando comenzaron a generar datos las estaciones y durante que periodos de tiempo se han obtenido las variables. 
 
-En primer lugar vamos reemplazar todos los posibles valores especiales (NULL, NaN, Inf...)  que pudieran haber en las varianles numéricas de nuestro dataset por NA's. De esta forma podemos tratar todos estos datos que no tienen sentido a la vez.
+En primer lugar vamos reemplazar todos los posibles valores especiales (NULL, NaN, Inf...)  que pudieran haber en las variables numéricas de nuestro dataset por NA's. De esta forma podemos tratar todos estos datos que no tienen sentido a la vez.
 
 ```{r}
 variables_numericas <- colnames(datos[sapply(datos, is.numeric)])
@@ -263,7 +264,17 @@ datos <-
   mutate(datos, across(all_of(variables_numericas), reemplazo_especiales))
 ```
 
-En el Anexo 1, en la Figura \ref{tabla:anexo2} podemos confirmar los elevados porcentajes NA's:
+En el Anexo 1, en la Figura \ref{tabla:anexo2} podemos confirmar los elevados porcentajes NA's. Como ya hemos comentado, pensamos que el elevado número de datos faltantes puede deberse a que algunas variables se miden en peródos de tiempo diferentes a las demás o a que no en todas las estaciones se miden todas las variables. Al unir los datos de las distintas estaciones por la fecha, se habrían dado lugar los NA's. Para comprobar esta teoría vamos a realizar una serie de representacions gráficas exploratorias.
+
+En el mapa de calor de la Figura \ref{fig:mapa_calor}, podemos ver qué variables mide cada estación meteorológica, además de la cantidad de datos que aporta cada una de ellas sobre cada varaible numérica. Vemos como sólo hay dos estaciones (Viveros y Boulevard Sud) que miden las variables *As*, *Pb*, *Ni* y *Cd* y que su número de entradas es bajo en comparación con otras variable, quizá debido a que se empezaron a tomar datos de estas variables más tarde que el resto. En el caso del *NH3* vemos que solo se ha medido en la estación Boulevard Sud. Las moléculas orgánicas *C8H10*, *C6H6*, *C7H8* sólo se miden en las estaciones de Pista de Silla y Viveros. Cabe destacar también que las estaciones que miden mayor cantidad de variables son Pista de Silla, Viveros y Boulevard Sud. Por otro lado, estaciones como Conselleria Meteo y Nazaret Meteo sólo miden las condiciones ambientales y no las concentraciones de contaminantes, al igual que la estación del Puerto de Valencia con la diferencia que en esta además se miden los niveles de partículas *PM10* y de *SO2*. Además, vemos como en la estación de Valencia Olivereta sólo se miden niveles de partículas *PM2.5*, *PM10* y óxidos de nitrógeno.
+
+Como podemos ver en la Figura \ref{fig:estaciones_activas}, desde 2004 hasta 2007 sólo tenemos datos de las estaciones de Pista de Silla y Viveros, que se mantienen actvas hasta 2022. Posteriormente, en los siguientes 5 años (2008-2012) se van añadiendo datos de otras estaciones como la del Politécnico, Av. de Francia, Molí del Sol, Boulevard Sur, Valencia Centro y Conselleria a razón casi de una nueva estación al año y que se mantienen hasta el final (2022). Desde 2013 hasta 2016 se siguen viendo las mismas estaciones y en los siguientes dos años (2017-2018) se añaden datos de la estación del Puerto de Valencia, de la que posteriormente dejamos de obtener datos. Finalmente, desde 2019 hasta 2022 se van añadiendo progresivamente cada año las estaciones de Nazaret, Puerto Molí Trans. Ponent, Puerto antic Turia y Valencia Olivereta. 2022 es el año donde tenemos datos de más estaciones distintas.
+
+A partir del gráfico de la Figura \ref{fig:periodos_variables} podemos ver el periodo de tiempo en el que las variables comienzan a ser medidas. En concreto, los datos de *As*, *Cd*, *Ni*, *Pb* empiezan a tomarse sólo a partir de 2019. Además, terminan antes que el resto de variables, a principios del 2022.. Otras variables como *Precipitacion*, *Velocidad_maxima_del_viento*,*PM1* o *NH3* empiezan a tener datos un poco más tarde que el resto pero antes del 2019. Todas las demás variables presentan almenos algún dato en 2004.
+
+<!-- Tras esta primera visualización de nuestros datos, podemos concluir que la gran cantidad de datos faltantes se debe a una combinación del hecho de que no todas las estaciones miden todas las variables, sumado a que los datos de ciertas variables se empiezan a medir posteriormente que el resto. Esto puede deberse a que la(s) estación(es) que recoge(n) datos de esta variable comienza(n) a funcionar en una fecha posterior al resto de estaciones o simplemente debido a que hasta cierto año no se instalan sensores en las estaciones para medir esas variables. En cualquier caso, dependiendo del análisis que se quiera realizar se habrán de escoger unas variables, y por ende un determinado número de estaciones que midan estas variables y un período de tiempo en que se estén recogiendo datos de estas variables. -->
+
+En nuestro caso vamos a escoger un período de 10 años, desde 2012 a 2022, ya que en este período de tiempo hay un número significativo de estaciones recogiendo datos y la mayoría de las variables son medidas en este intervalo de tiempo de forma consistente. No obstante, decidimos descartar las variables *Pb*, *Cd*, *Ni*, *As*, *B(a)p* y *NH3* debido a que se comienzan a medir después del 2012 y resultaría poco razonable imputar los datos de estas variables en esos años. De la misma forma, también descartamos las variables *C7H8*, *C6H6*, y *C8H10* debido a que presentan grandes períodos de tiempo con ausencia de datos intercalados entre 2012 y 2022, por lo que también sería poco razonable imputar estos datos. 
 
 ```{r, include=FALSE}
 porc_na <- function(x) {
@@ -284,10 +295,6 @@ anexo2 <- kableExtra::kable(res, format = "latex",
              table.envir = "table", position = "H") %>%
   kableExtra::kable_styling(font_size=7)
 ```
-
-Como ya hemos comentado, pensamos que el elevado número de datos faltantes puede deberse a que algunas variables se miden en peródos de tiempo diferentes a las demás o a que no en todas las estaciones se miden todas las variables. Al unir los datos de las distintas estaciones por la fecha, se habrían dado lugar los NA's. Para comprobar esta teoría vamos a realizar una serie de representacions gráficas exploratorias.
-
-En primer lugar, creamos un mapa de calor para comprobar cuáles son las variables que mide cada estación y cuántos datos de dicha variable aporta cada estación.
 
 ```{r mapa_calor, fig.width=4.5, fig.height=3, fig.align='left', fig.cap="\\label{fig:mapa_calor}"}
 num_entradas <- function(x) {
@@ -311,14 +318,9 @@ p <-
         axis.text.y = element_text(size = 6), 
         legend.title = element_text(size = 7),
         legend.text = element_text(size = 6))
-  
 
 show(p)
 ```
-
-En el mapa de calor de la Figura \ref{fig:mapa_calor}, podemos ver qué variables mide cada estación meteorológica, además de la cantidad de datos que aporta cada una de ellas sobre cada varaible numérica. Vemos como sólo hay dos estaciones (Viveros y Boulevard Sud) que miden las variables *As*, *Pb*, *Ni* y *Cd* y que su número de entradas es bajo en comparación con otras variable, quizá debido a que se empezaron a tomar datos de estas variables más tarde que el resto. En el caso del *NH3* vemos que solo se ha medido en la estación Boulevard Sud. Las moléculas orgánicas *C8H10*, *C6H6*, *C7H8* sólo se miden en las estaciones de Pista de Silla y Viveros. Cabe destacar también que las estaciones que miden mayor cantidad de variables son Pista de Silla, Viveros y Boulevard Sud. Por otro lado, estaciones como Conselleria Meteo y Nazaret Meteo sólo miden las condiciones ambientales y no las concentraciones de contaminantes, al igual que la estación del Puerto de Valencia con la diferencia que en esta además se miden los niveles de partículas *PM10* y de *SO2*. Además, vemos como en la estación de Valencia Olivereta sólo se miden niveles de partículas *PM2.5*, *PM10* y óxidos de nitrógeno.
-
-Ahora queremos ver qué estaciones han estado activas a lo largo de los años:
 
 ```{r estaciones_activas, fig.width=4.5, fig.height=3, fig.align='left', fig.cap="\\label{fig:estaciones_activas}"}
 datos %>%
@@ -332,10 +334,6 @@ datos %>%
         legend.key.width = unit(0.05, "cm"),
         legend.key.height = unit(0.05, "cm"))
 ```
-
-Como podemos ver en la Figura \ref{fig:estaciones_activas}, desde 2004 hasta 2007 sólo tenemos datos de las estaciones de Pista de Silla y Viveros, que se mantienen actvas hasta 2022. Posteriormente, en los siguientes 5 años (2008-2012) se van añadiendo datos de otras estaciones como la del Politécnico, Av. de Francia, Molí del Sol, Boulevard Sur, Valencia Centro y Conselleria a razón casi de una nueva estación al año y que se mantienen hasta el final (2022). Desde 2013 hasta 2016 se siguen viendo las mismas estaciones y en los siguientes dos años (2017-2018) se añaden datos de la estación del Puerto de Valencia, de la que posteriormente dejamos de obtener datos. Finalmente, desde 2019 hasta 2022 se van añadiendo progresivamente cada año las estaciones de Nazaret, Puerto Molí Trans. Ponent, Puerto antic Turia y Valencia Olivereta. 2022 es el año donde tenemos datos de más estaciones distintas.
-
-A continuación queremos visualizar el período de tiempo entre la primera y la última medida de cada variable
 
 ```{r periodos_variables, fig.width=5.5, fig.height=4, fig.align='left', fig.cap="\\label{fig:periodos_variables}"}
 datos %>%
@@ -359,24 +357,31 @@ datos %>%
   scale_colour_manual(values = rainbow(26)) 
 ```
 
-A partir del gráfico de la Figura \ref{fig:periodos_variables} podemos ver como algunas variables empiezan a ser medidas a partir de cierta fecha. En concreto, los datos de *As*, *Cd*, *Ni*, *Pb* empiezan a tomarse sólo a partir de 2019. Además, terminan antes que el resto de variables, a principios del 2022.. Otras variables como *Precipitacion*, *Velocidad_maxima_del_viento*,*PM1* o *NH3* empiezan a tener datos un poco más tarde que el resto pero antes del 2019. Todas las demás variables presentan almenos algún dato en 2004.
-
-Tras esta primera visualización de nuestros datos, podemos concluir que la gran cantidad de datos faltantes se debe a una combinación del hecho de que no todas las estaciones miden todas las variables, sumado a que los datos de ciertas variables se empiezan a medir posteriormente que el resto. Esto puede deberse a que la(s) estación(es) que recoge(n) datos de esta variable comienza(n) a funcionar en una fecha posterior al resto de estaciones o simplemente debido a que hasta cierto año no se instalan sensores en las estaciones para medir esas variables. En cualquier caso, dependiendo del análisis que se quiera realizar se habrán de escoger unas variables, y por ende un determinado número de estaciones que midan estas variables y un período de tiempo en que se estén recogiendo datos de estas variables.
-
-En nuestro caso vamos a escoger un período de 10 años, desde 2012 a 2022, ya que en este período de tiempo hay un número significativo de estaciones recogiendo datos y la mayoría de las variables son medidas en este intervalo de tiempo de forma consistente. No obstante, decidimos descartar las variables *Pb*, *Cd*, *Ni*, *As*, *B(a)p* y *NH3* debido a que se comienzan a medir después del 2012 y resultaría poco razonable imputar los datos de estas variables en esos años. De la misma forma, también descartamos las variables *C7H8*, *C6H6*, y *C8H10* debido a que presentan grandes períodos de tiempo con ausencia de datos intercalados entre 2012 y 2022, por lo que también sería poco razonable imputar estos datos. 
-
 # Análisis univariante
 
-En esta sección analizaremos las variables de forma individual con el objetivo de conocer sus magnitudes, es decir, las unidades de medida que representan, y como se distribuyen. Como se ha mencionado previamente, escogemos los datos que comienzan en 2012, concretamente cunado se empiezan a tomar datos de la precipitación, y los datos previos a 2023, concretamente cuando se dejan de tomar los oxidos de nitrogeno.
+En esta sección analizaremos las variables de forma individual con el objetivo de conocer sus magnitudes, es decir, las unidades de medida que representan, y como se distribuyen. 
+<!-- Como se ha mencionado previamente, escogemos los datos que comienzan en 2012, concretamente cunado se empiezan a tomar datos de la precipitación, y los datos previos a 2023, concretamente cuando se dejan de tomar los oxidos de nitrogeno. -->
 
-Variables de interés
-  - Fecha
-  - Estación
-  - Gases: NO, NO2, NOx, SO2, CO, O3 
-  - Meteorológicas: Temperatura, Humedad, Presion, Velocidad viento, Direccion viento, Radiación solar, Precipitación
-  - Calidad de vida: Ruido
+<!-- Variables de interés -->
+<!--   - Fecha -->
+<!--   - Estación -->
+<!--   - Gases: NO, NO2, NOx, SO2, CO, O3  -->
+<!--   - Meteorológicas: Temperatura, Humedad, Presion, Velocidad viento, Direccion viento, Radiación solar, Precipitación -->
+<!--   - Calidad de vida: Ruido -->
 
-Comenzamos con un summary de las variables numéricas de interés para analizar las magnitudes de las variables y como se distribuyen los datos. El resultado de este sumario lo podemos ver en el Anexo 1 Tabla \ref{tabla:anexo3}.
+Comenzamos con un summary de las variables numéricas de interés para analizar las magnitudes de las variables y como se distribuyen los datos. El resultado de este sumario lo podemos ver en el Anexo 1 Tabla \ref{tabla:anexo3}. Mediante el sumario anterior podemos averiguar cuales son las unidades de medida empleadas contrastando con información externa, ya que en la fuente de los datos no se proporcionan.
+
+  - Gases (NO, NO2, NOx, SO2, CO, O3): microgramos por metro cubico ($\mu$g/m3)
+  - Temperatura: grados centígrados (Cº)
+  - Humedad: porcentaje (%)
+  - Presión: hectopascales (hPa)
+  - Velocidad del viento: kilometros/hora (m/s)
+  - Dirección del viento: ángulo de 0 a 360 (º)
+  - Precipitación: litros de agua por metro cuadrado (mm)
+  - Radiación solar: Vatios por metro cuadrado (W/m2)
+  - Ruido: decibelios (dB)
+  
+También es interesante observar las distribuciones de estas variables. Esto podemos observarlo en las figuras \ref{densidades1} y \ref{densidades2}.
 
 ```{r, include=FALSE, fig.width=4, fig.height=4, fig.align='left'}
 variables <-
@@ -448,21 +453,6 @@ anexo3 <- kableExtra::kable(res, format = "latex",
   kableExtra::kable_styling(font_size=7)
 ```
 
-Mediante el summary anterior podemos averiguar cuales son las unidades de medida empleadas contrastando con información externa, ya que en la fuente de los datos no se proporcionan.
-
-  - Gases (NO, NO2, NOx, SO2, CO, O3): microgramos por metro cubico ($\mu$g/m3)
-  - Temperatura: grados centígrados (Cº)
-  - Humedad: porcentaje (%)
-  - Presión: hectopascales (hPa)
-  - Velocidad del viento: kilometros/hora (m/s)
-  - Dirección del viento: ángulo de 0 a 360 (º)
-  - Precipitación: litros de agua por metro cuadrado (mm)
-  - Radiación solar: Vatios por metro cuadrado (W/m2)
-  - Ruido: decibelios (dB)
-
-
-Densidades:
-
 ```{r densidades1, fig.width=5.5, fig.height=3.5, fig.align='left', fig.cap="\\label{fig:densidades1}"}
 # Gases
 datos[2:8] %>%
@@ -514,7 +504,13 @@ datos[c(2, c(9:16))] %>%
 
 ## Detección y eliminación de outliers con métodos univariante
 
-A continuación, procederemos a detectar y eliminar outliers. Primero, comenzaremos definiendo diferentes funciones posibles para aplicar la detección de estos. Todas estas funciones corresponden a métodos univariantes.
+A continuación, procederemos a detectar y eliminar outliers. Primero, comenzaremos definiendo diferentes funciones univariantes (tresSigma, hampel, boxplot y percentiles). Comprobaremos el funcionamiento de los métodos de detección de outliers sobre todas las variables numéricas y observaremos las diferencias. En la Figura \ref{fig:outliers_univ} podemos observar cómo la regla del percentil siempre elimina datos, esto es debido a la naturaleza de la regla, la cual siempre eliminará el 2.5% que quede por arriba y el 2.5% por abajo. Podemos usar esto como comparador de el resto de métodos.
+
+El resto de métodos, en la mayoría de ocasiones quedan por debajo del criterio del percentil. No obstante, es visible el agresivo comportamiento de la regla boxplot y el excesivamente poco agresivo método de la regla 3-sigma. En cuanto al comportamiento de la regla de Hampel, parece comportarse como una versión agresiva pero manteniendo la prudencia de la regla 3-sigma.
+
+<!-- Pese a que, según las matemáticas, cuantos más datos tenemos, más se parece la distribución de los mismos a una Gaussiana, hemos visto anteriormente que no todos los datos siguen esta distribución. -->
+
+Hemos decidido utilizar la regla de Hampel para la detección de los outliers, ya que esta es una regla robusta a distribuciones que no sean Gaussianas. En cuanto a qué hacer con estos outliers, hemos decidido sustituirlos por NA para su posterior inputación.
 
 ```{r}
 tresSigma <- function(x) {
@@ -573,7 +569,6 @@ replace_outliers <- function(x, func) {
 }
 ```
 
-Vamos a comprobar el funcionamiento de los métodos de detección de outliers. Lo aplicaremos sobre todas las variables numéricas y comprobaremos el número de outliers que detecta cada función para cada variable.
 ```{r ourliers_univ, fig.width=5.5, fig.height=3.7, fig.align='left', fig.cap="\\label{fig:outliers_univ}"}
 columnas_numericas <- names(datos)[3:16]
 
@@ -604,16 +599,6 @@ ggplot(resultados,
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 ```
 
-En la Figura \ref{fig:outliers_univ} podemos observar cómo la regla del percentil siempre elimina datos, esto es debido a la naturaleza de la regla, la cual siempre eliminará el 2.5% que quede por arriba y el 2.5% por abajo. Podemos usar esto como comparador de el resto de métodos.
-
-El resto de métodos, en la mayoría de ocasiones quedan por debajo del criterio del percentil. No obstante, es visible el agresivo comportamiento de la regla boxplot y el excesivamente poco agresivo método de la regla 3-sigma. En cuanto al comportamiento de la regla de Hampel, parece comportarse como una versión agresiva pero manteniendo la prudencia de la regla 3-sigma.
-
-Pese a que, según las matemáticas, cuantos más datos tenemos, más se parece la distribución de los mismos a una Gaussiana, hemos visto anteriormente que no todos los datos siguen esta distribución.
-
-Por este motivo, hemos decidido utilizar la regla de Hampel para la detección de los outliers, ya que esta es una regla robusta a distribuciones que no sean Gaussianas.
-
-A continuación, reemplazaremos los outliers detectados por NA.
-
 ```{r}
 datos_no_outliers <- datos %>%
   mutate_at(vars(all_of(columnas_numericas)), ~ replace_outliers(., hampel))
@@ -623,7 +608,9 @@ datos_no_outliers <- datos %>%
 
 Partiendo de las conclusiones obtenidas en el apartado de análisis de datos faltantes, nos parece interesante ver si existe alguna influencia en el valor de la variable por parte de la estación de la que proviene. En caso de no existir una influencia considerable podemos utilizar los valores obtenidos en otras estaciones para imputar otros. Finalmente comprobaremos si año influye en el valor de la variable, para ver si a lo largo del tiempo ha ocurrido algún cambio considerable.
 
-Mediante boxplots vamos a analizar como se distribuyen los datos respecto a las estaciones. En primer lugar los gases:
+Mediante boxplots vamos a analizar como se distribuyen los datos respecto a las estaciones. En la figura \ref{boxplot_est1} se observan las referentes a gases y en la figura \ref{boxplot_est2} el resto.
+
+A partir de ambas figuras podemos concluir con que generalmente la estación no influye en los valores de las variables. Esta información nos es útil para la imputación de NA's, ya que podemos emplear la media de las medidas obtenidas por otras estaciones. Respecto al ruido, el cual únicamente se mide en las estaciones de "Pista Silla" y "Viveros" si parece tener un valor un poco mayor en "Pista Silla". Esto puede deberse a que esta estación se encuentra en un lugar con mayor tránsito de coches.
 
 ```{r boxplot_est1, fig.width=5.5, fig.height=3.3, fig.align='left', fig.cap="\\label{fig:boxplot_est1}"}
 # Gases
@@ -641,8 +628,6 @@ datos_no_outliers %>%
   theme(axis.text.x = element_blank(), legend.position = "none")
 ```
 
-En segundo lugar las variables meteorológicas:
-
 ```{r boxplot_est2, fig.width=5.5, fig.height=3.5, fig.align='left', fig.cap="\\label{fig:boxplot_est2}"}
 # Variables meteorológicas y ruido
 datos_no_outliers %>%
@@ -659,9 +644,7 @@ datos_no_outliers %>%
   theme(axis.text.x = element_blank(), legend.position = "none")
 ```
 
-A partir de las Figuras \ref{fig:boxplot_est1} y \ref{fig:boxplot_est2} podemos concluir con que generalmente la estación no influye en los valores de las variables. Esta información nos es útil para la imputación de NA's, ya que podemos emplear la media de las medidas obtenidas por otras estaciones. Respecto al ruido, el cual únicamente se mide en las estaciones de "Pista Silla" y "Viveros" si parece tener un valor un poco mayor en "Pista Silla". Esto puede deberse a que esta estación se encuentra en un lugar con mayor tránsito de coches.
-
-Ahora vamos a ver una sencilla evolución mediante boxplots de el valor de las variables a lo largo de los años. Comenzamos con los gases:
+También visualizaremos la evolución mediante boxplots de el valor de las variables a lo largo de los años. En la Figura \ref{fig:boxplot_anos1} se puede apreciar una leve reducción a lo largo de los años de los gases considerados como contaminantes a excepción del SO2 que parece mantenerse constante. Por otro lado vemos un leve aumento del ozono (O3), por lo que podría existir una relación con la disminución de gases contaminantes. Continuamos con las variables meteorológicas. Como era de esperar, en la Figura \ref{fig:boxplot_anos2} vemos como las variables meteorológicas no han sufrido variaciones a lo largo de los años. Por otro lado si que se aprecia un leve aumento en el ruido.
 
 ```{r boxplot_anos1, fig.width=5.5, fig.height=3.3, fig.align='left', fig.cap="\\label{fig:boxplot_anos1}"}
 # Gases
@@ -680,8 +663,6 @@ datos_no_outliers %>%
   theme(axis.text.x = element_blank(), legend.position = "none")
 ```
 
-En la Figura \ref{fig:boxplot_anos1} se puede apreciar una leve reducción a lo largo de los años de los gases considerados como contaminantes a excepción del SO2 que parece mantenerse constante. Por otro lado vemos un leve aumento del ozono (O3), por lo que podría existir una relación con la disminución de gases contaminantes. Continuamos con las variables meteorológicas:
-
 ```{r boxplot_anos2, fig.width=5.5, fig.height=3.5, fig.align='left', fig.cap="\\label{fig:boxplot_anos2}"}
 # Gases
 datos_no_outliers %>%
@@ -699,12 +680,11 @@ datos_no_outliers %>%
   theme(axis.text.x = element_blank(), legend.position = "none")
 ```
 
-Como era de esperar, en la Figura \ref{fig:boxplot_anos2} vemos como las variables meteorológicas no han sufrido variaciones a lo largo de los años. Por otro lado si que se aprecia un leve aumento en el ruido.
-
-
 ## Imputación de datos anómalos
 
-Ahora que conocemos las unidades de nuestras variables tras haberlas analizado, sabemos cuál es el rango de valores puede tomar cada una. Así, sabemos que a excepción de la temperatura (medida en ºC) no tiene sentido que ninguna del resto de variables relacionadas con las condiciones ambientales (Humedad, dirección del viento, presión ...) tengan valores menores que 0, al igual que las concentraciones de los gases. Explorando el dataset con la función _View()_, vemos por ejemplo que la Radiación solar presenta un valor negativo. Para tratar estos datos anómalos, en primer lugar se convertirán en NA's y a continuación se les imputará un valor igual que el resto de datos faltantes.
+Ahora que conocemos las unidades de nuestras variables tras haberlas analizado, sabemos cuál es el rango de valores puede tomar cada una. 
+<!-- Así, sabemos que a excepción de la temperatura (medida en ºC) no tiene sentido que ninguna del resto de variables relacionadas con las condiciones ambientales (Humedad, dirección del viento, presión ...) tengan valores menores que 0, al igual que las concentraciones de los gases. Explorando el dataset con la función _View()_, vemos por ejemplo que la Radiación solar presenta un valor negativo.  -->
+Para tratar estos datos anómalos, en primer lugar se convertirán en NA's y a continuación se les imputará un valor igual que el resto de datos faltantes.
 
 ```{r}
 variables_numericas <- 
@@ -719,8 +699,11 @@ datos_no_outliers <- datos_no_outliers %>%
                 .fns = reemplazo_anomalos))
 ```
 
+<!-- Si bien nuestras variables de interés son más consistentes en comparación a las descartadas en lo que se refiere a las entradas diarias de cada variable, estas todavía presentan muchos datos faltantes. No obstante,  -->
 
-Si bien nuestras variables de interés son más consistentes en comparación a las descartadas en lo que se refiere a las entradas diarias de cada variable, estas todavía presentan muchos datos faltantes. No obstante, en el anáslisis univariante vimos que los datos diarios de las variables en todas las estaciones de Valencia suelen ser parecido. Decidimos usar este hecho para imputar los datos faltantes en cada día con la media de esta variable sobre todas las estaciones. Tras realizar esta imputación, todavía hay algunas variables que presentan NA's, esto se debe a que hay algunos días donde donde esta variable no se ha medido en ninguna de las estaciones. Esto sólo ocurre en el ~11% de las observaciones, por lo que decidimos desprendernos de estas observaciones, ya que el volúmen de datos es suficientemente grande y los datos todavía podrían considerarse diarios.
+En el anáslisis univariante vimos que los datos diarios de las variables en todas las estaciones de Valencia suelen ser parecido. Decidimos usar este hecho para imputar los datos faltantes en cada día con la media de esta variable sobre todas las estaciones. 
+
+<!-- Tras realizar esta imputación, todavía hay algunas variables que presentan NA's, esto se debe a que hay algunos días donde donde esta variable no se ha medido en ninguna de las estaciones. Esto sólo ocurre en el ~11% de las observaciones, por lo que decidimos desprendernos de estas observaciones, ya que el volúmen de datos es suficientemente grande y los datos todavía podrían considerarse diarios. -->
 
 ```{r}
 imputacion_NAs <- function(x) {
@@ -739,9 +722,17 @@ datos_limpios <- datos_limpios[complete.cases(datos_limpios), ]
 ```
 ## Correlaciones
 
-La correlación puede tener valores en el rango [-1,1]. Siendo -1 el indicador de un comportamiento absolutamente contrario y siendo 1 la misma variable, pues tiene exactamente el mismo comportamiento.
+<!-- La correlación puede tener valores en el rango [-1,1]. Siendo -1 el indicador de un comportamiento absolutamente contrario y siendo 1 la misma variable, pues tiene exactamente el mismo comportamiento. Esto puede darnos información para reflexionar sobre la naturaleza y comportamiento de los datos. -->
 
-Esto puede darnos información para reflexionar sobre la naturaleza y comportamiento de los datos.
+Basándonos en la Figura \ref{fig:correlaciones1}, podemos extraer las siguientes conclusiones:
+
++ Existe una correlación negativa importante entre NOs y Ozono. Esto podría deberse a que la presencia de óxidos de nitrógeno puede contribuir a la degradación del ozono en la atmósfera, lo que tiene implicaciones para la calidad del aire, la contaminación y el efecto hivernadero.
+
++ Correlación positiva de NOx con el resto de NO (NO, NO2...). Como era de esperar y como se ha mencionado en la definición de las variables, NOx representa el conjunto de oxidos de nitrogeno, entre ellos el NO y el NO2.
+
++ Correlación positiva entre Temperatura y Radiación Solar. Esto es coherente con las estaciones más cálidas que a menudo experimentan más horas de sol y mayor radiación solar.
+
++ Correlación entre Radiación Solar y Ozono. Esto tiene sentido ya que la capa de ozono filtra la mayor parte de la radiación ultravioleta proveniente del sol, por lo tanto están muy relacionados entre ellos.
 
 ```{r, include=FALSE}
 library(GGally)
@@ -763,16 +754,6 @@ corr_S
 ```{r correlaciones1, fig.width=5.5, fig.height=4, fig.align='left', fig.cap="\\label{fig:correlaciones1}"}
 ggcorr(datos_limpios[3:15])
 ```
-
-Basándonos en la Figura \ref{fig:correlaciones1}, podemos extraer las siguientes conclusiones:
-
-+ Existe una correlación negativa importante entre NOs y Ozono. Esto podría deberse a que la presencia de óxidos de nitrógeno puede contribuir a la degradación del ozono en la atmósfera, lo que tiene implicaciones para la calidad del aire, la contaminación y el efecto hivernadero.
-
-+ Correlación positiva de NOx con el resto de NO (NO, NO2...). Como era de esperar y como se ha mencionado en la definición de las variables, NOx representa el conjunto de oxidos de nitrogeno, entre ellos el NO y el NO2.
-
-+ Correlación positiva entre Temperatura y Radiación Solar. Esto es coherente con las estaciones más cálidas que a menudo experimentan más horas de sol y mayor radiación solar.
-
-+ Correlación entre Radiación Solar y Ozono. Esto tiene sentido ya que la capa de ozono filtra la mayor parte de la radiación ultravioleta proveniente del sol, por lo tanto están muy relacionados entre ellos.
 
 <!-- También hemos filtrado las correlaciones para mostrar únicamente las mayores correlaciones. Hemos puesto un umbral para escoger solo las correlaciones que sean mayores a 0.7 para visualizar las variables muy correlacionadas (eliminando las correlaciones de una variable con ella misma). Hemos puesto el ejemplo en el que las correlaciones son directas para la siguiente visualización. Podría realizarse esto para las correlaciones inversas. -->
 
@@ -806,9 +787,9 @@ ggplot(correlaciones,
 
 ## Detección y eliminación de outliers con métodos multivariable
 
-EXPLICAR
+La distancia de Mahalanobis mide la distancia de un punto de datos a un conjunto de datos multivariado centrado y escalado según la matriz de covarianza. Los puntos que tienen distancias de Mahalanobis más grandes son considerados como outliers, ya que están más lejos de la distribución típica de los datos. En otras palabras: con estos métodos multivariable no nos fijamos en que un valor sea anómalo, sino una combinación de estos, siendo representados en un espacio vectorial y midiendo la distancia de cada punto (muestra) con el resto.
 
-En este apartado, trabajaremos con el dataframe de datos que contiene la imputación de NA.
+Lo que haremos al encontrar un outlier será eliminarlo directamente, pues toda la muestra será anómala.
 
 ```{r, include=FALSE}
 distancia_mahalanobis <- function(x) {
@@ -836,7 +817,6 @@ datos_limpios_sin_outliers <- datos_limpios[-instancias_outliers, ]
 
 # Resolución de preguntas planteadas sobre los datos
 
-En esta sección se resolverán las diferentes preguntas planteadas sobre los datos.
 ## Influencia de carril bici
 
 Para estudiar la influencia de un carril bici por el centro de Valencia, estudiaremos la evolución de gases contaminantes en diversas estaciones de la ciudad. Mediremos la evolución de los gases:
@@ -850,6 +830,10 @@ Además, las estaciones deberían ser las más céntricas, ya que ahí el efecto
 + Bulevard Sud
 + Valencia Centro
 + Olivereta
+
+Si bien, en la Figura \ref{fig:pregunta1_1} no se observan cambios significativos en los niveles de SO2, en la Figura \ref{fig:pregunta1_2} sí que podemos observar una evolución en los niveles de NO2.
+
+Respecto al NO2 si que se puede apreciar una reducción a lo largo de los años. Con unos niveles más bajos especialmente en los últimos 3 años. Además se puede apreciar una periodicidad, concretamente una reducción de los niveles de NO2 en los meses de verano. Esto coincide con el momento del año donde menos gente vive en la ciudad y por lo tanto menos tráfico hay. En conclusión parece que las medidas de transporte que se han tomado en la ciudad han influenciado en la reducción de gases contaminantes.
 
 
 ```{r pregunta1_1, fig.width=4, fig.height=3, fig.align='left', fig.cap="\\label{fig:pregunta1_1}"}
@@ -898,15 +882,9 @@ ggplot(data = datos_mensuales, aes(
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 ```
 
-NOTA: El gráfico de NO2 se ve mucho mejor la reducción cuando se observan todas las estaciones.
-
-Si bien, en la Figura \ref{fig:pregunta1_1} no se observan cambios significativos en los niveles de SO2, en la Figura \ref{fig:pregunta1_2} sí que podemos observar una evolución en los niveles de NO2.
-
-Respecto al NO2 si que se puede apreciar una reducción a lo largo de los años. Con unos niveles más bajos especialmente en los últimos 3 años. Además se puede apreciar una periodicidad, concretamente una reducción de los niveles de NO2 en los meses de verano. Esto coincide con el momento del año donde menos gente vive en la ciudad y por lo tanto menos tráfico hay. En conclusión parece que las medidas de transporte que se han tomado en la ciudad han influenciado en la reducción de gases contaminantes.
-
 ## Relación entre la calidad del aire y el dia de la semana
 
-Aqui observamos si, en general la calidad del aire se ve influenciada por el día de la semana. Queremos sobre todo fijarnos en la distinción entre días laborables y de descanso. Podemos comprobar cómo, efectivamente, existe una disminución en los gases contaminantes los días festivos con respecto a los días laborables.
+En esta pregunta observamos si, en general la calidad del aire se ve influenciada por el día de la semana. Queremos sobre todo fijarnos en la distinción entre días laborables y de descanso. Podemos comprobar cómo, efectivamente, existe una disminución en los gases contaminantes los días festivos con respecto a los días laborables.
 
 ```{r pregunta2, fig.width=4, fig.height=3, fig.align='left', fig.cap="\\label{fig:pregunta2}"}
 gases_interes <- c("NO", "NO2", "NOx", "SO2", "CO")
@@ -948,6 +926,8 @@ ggplot(datos_combinados, aes(x = Gas, y = Valor, fill = Tipo)) +
 
 En la Figura \ref{fig:pregunta3_1} podemos observar un incremento visibleen la medición del ruido medio a lo largo de los años. Obviamente, en los datos del 2020 podemos observar un decrecimiento de los mismos, producto del parón de la pandemia, pero vemos cómo continúa aun así subiendo.
 
+Con la figura \ref{fig:pregunta3_2} comprobaremos si este ruido medido depende de la zona dónde la midamos. Para ello, vamos a observar el comportamiento de la varianza de la media de los ruidos agrupados por estaciones. Calcularemos la desviación para cada año y, finalmente, la media de todas las desviaciones Si el valor es pequeño, entonces podemos afirmar que el incremento en el ruido no es de ciertas zonas, sino generalizado. Podemos observar que, para los valores que tratamos (sobre 50 y 60), una desviación del 0.3 es despreciable. Lo que sí que podemos determinar, gracias a contrastar estos datos con los de la gráfica boxplot \ref{boxplot_anos2}, es que la evolución en el ruido no viene dada por una tendencia natural. Más bien, el gráfico nos indica que existe un aumento significativo de ruido pero en días concretos.
+
 ```{r pregunta3_1, fig.width=4, fig.height=3, fig.align='left', fig.cap="\\label{fig:pregunta3_1}"}
 datos_ruido <- datos_limpios[c("Fecha", "Ruido")] %>%
   mutate(Ano = year(Fecha)) %>%
@@ -961,8 +941,6 @@ ggplot(datos_ruido, aes(x = Ano, y = Media_Ruido)) +
   theme_minimal() +
   scale_y_continuous(limits = c(min(datos_ruido$Media_Ruido), max(datos_ruido$Media_Ruido)))
 ```
-
-Ahora comprobaremos si este ruido medido depende de la zona dónde la midamos. Para ello, vamos a observar el comportamiento de la varianza de la media de los ruidos agrupados por estaciones. Calcularemos la desviación para cada año y, finalmente, la media de todas las desviaciones Si el valor es pequeño, entonces podemos afirmar que el incremento en el ruido no es de ciertas zonas, sino generalizado.
 
 ```{r pregunta3_2, fig.width=4, fig.height=3, fig.align='left', fig.cap="\\label{fig:pregunta3_2}"}
 datos_ruido_estaciones <-
@@ -984,10 +962,6 @@ ggplot(datos_ruido_estaciones, aes(x = Ano, y = Desviacion_por_ano)) +
 ```{r include=FALSE}
 mean(datos_ruido_estaciones$Desviacion_por_ano)
 ```
-
-En la Figura \ref{fig:pregunta3_2} podemos observar que, para los valores que tratamos (sobre 50 y 60), una desviación del 0.3 es despreciable.
-
-Lo que sí que podemos determinar, gracias a contrastar estos datos con los de la gráfica boxplot \ref{boxplot_anos2}, es que la evolución en el ruido no viene dada por una tendencia natural. Más bien, el gráfico nos indica que existe un aumento significativo de ruido pero en días concretos.
 
 ## Evolución de la temperatura a lo largo de los años
 
