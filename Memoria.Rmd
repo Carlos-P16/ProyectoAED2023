@@ -654,9 +654,20 @@ datos_no_outliers %>%
 Como era de esperar, las variables meteorológicas no han sufrido variaciones a lo largo de los años. Por otro lado si que se aprecia un leve aumento en el ruido.
 
 
-## Imputación de NA's
+## Imputación de datos anómalos
 
-Centrándonos en las variables de interés, si bien son más consistentes en lo que se refiere a las entradas diarias de cada variable, todavía hay muchos datos faltantes. No obstante, podemos aprovechar el hecho de que los datos diarios de las variables en todas las estaciones de Valencia suelen ser muy parecidos, por lo que decidimos imputar los datos faltantes en cada día con la media de esta variable sobre todas las estaciones. Tras realizar esta imputación, todavía hay algunas variables que presentan NA's, esto se debe a que hay algunos días donde donde esta variable no se ha medido en ninguna de las estaciones. Esto sólo ocurre en el 11% de las observaciones, por lo que decidimos desprendernos de estas observaciones, ya que el volúmen de datos es suficientemente grande y los datos todavía pueden considerarse diarios.
+Ahora que conocemos las unidades de nuestras variables tras haberlas analizado, sabemos cuál es el rango de valores puede tomar cada una. Así, sabemos que a excepción de la temperatura (medida en ºC) no tiene sentido que ninguna del resto de variables relacionadas con las condiciones ambientales (Humedad, dirección del viento, presión ...) tengan valores menores que 0, al igual que las concentraciones de los gases. Explorando el dataset con la función _View()_, vemos por ejemplo que la Radiación solar presenta un valor negativo. Para tratar estos datos anómalos, en primer lugar se convertirán en NA's y a continuación se les imputará un valor igual que el resto de datos faltantes.
+
+```{r}
+variables_numericas <- variables_numericas <- colnames(datos_no_outliers[sapply(datos_no_outliers, is.numeric)])
+reemplazo_anomalos <- function(x){
+  ifelse(x < 0, NA, x)
+}
+datos_no_outliers <- datos_no_outliers %>% mutate(across(.cols = all_of(variables_numericas[variables_numericas != "Temperatura"]), .fns = reemplazo_anomalos))
+```
+
+
+Si bien nuestras variables de interés son más consistentes en comparación a las descartadas en lo que se refiere a las entradas diarias de cada variable, estas todavía presentan muchos datos faltantes. No obstante, en el anáslisis univariante vimos que los datos diarios de las variables en todas las estaciones de Valencia suelen ser parecido. Decidimos usar este hecho para imputar los datos faltantes en cada día con la media de esta variable sobre todas las estaciones. Tras realizar esta imputación, todavía hay algunas variables que presentan NA's, esto se debe a que hay algunos días donde donde esta variable no se ha medido en ninguna de las estaciones. Esto sólo ocurre en el ~11% de las observaciones, por lo que decidimos desprendernos de estas observaciones, ya que el volúmen de datos es suficientemente grande y los datos todavía podrían considerarse diarios.
 
 ```{r}
 imputacion_NAs <- function(x) {
@@ -669,6 +680,7 @@ datos_limpios <- datos_no_outliers %>%
   #select(-c('Pb_(ng/m3)','Cd_(ng/m3)','Ni_(ng/m3)','As_(ng/m3)','B(a)p_(ng/m3)','NH3','C7H8','C6H6','C8H10')) %>%
   group_by(Fecha) %>%
   mutate(across(.cols = all_of(columnas_numericas), imputacion_NAs)) %>%
+  # vuelvo a aplicar la función reemplazo_especiales porque los NA's que no se han podido imputar se convierten en NaN
   mutate(across(all_of(columnas_numericas), reemplazo_especiales)) %>%
   ungroup
 
